@@ -19,12 +19,12 @@ draft: true
 ```
 
 ```bash
-> forge new project -n FsTweet.Web --dir FsTweet.Web -t suave
+> forge new project -n FsTweet.Web --dir src -t suave
 ```
 
 ```bash
 Unhandled error:
-Could not find file ".../FsTweet/FsTweet.Web/build.sh".
+Could not find file ".../FsTweet/src/build.sh".
 ```
 
 ```bash
