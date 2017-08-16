@@ -147,4 +147,4 @@ In this part, we have learned how to bootstrap a project from scratch and config
 
 Using Forge, we orchestrated the project setup, and the cherry on the cake is the alias to build and run our project with a single command! 
 
-The source cod is available on [GitHub](https://github.com/demystifyfp/FsTweet/tree/v0.0)
+The source code is available on [GitHub](https://github.com/demystifyfp/FsTweet/tree/v0.0)
