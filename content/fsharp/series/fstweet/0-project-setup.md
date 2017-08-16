@@ -6,7 +6,7 @@ draft: true
 
 Hi,
 
-In this zeroth part of the series on [Creating a Twitter Clone in F# using Suave](TODO) we will be starting the project from scratch using and configuring it to use [FAKE](https://fake.build/) and [Paket](https://fsprojects.github.io/Paket/)
+In this zeroth part of the series on [Creating a Twitter Clone in F# using Suave](TODO), we will be starting the project from scratch using and configuring it to use [FAKE](https://fake.build/) and [Paket](https://fsprojects.github.io/Paket/)
 
 
 Let's get started by creating an empty directory with the name *FsTweet*
@@ -17,7 +17,11 @@ Let's get started by creating an empty directory with the name *FsTweet*
 
 We are going to use [Forge](http://forge.run/), a command line tool that provides tasks for creating and managing F# projects. 
 
-You can install Forge, by following this [installation instructions](https://github.com/fsharp-editing/Forge/wiki/Getting-started)
+This series uses Forge [**version 1.4.2**](https://github.com/fsharp-editing/Forge/releases/tag/1.4.2). 
+
+> Post this version, Forge has been updated to work with dotnet core, and it's not backward compatible. 
+
+You can install Forge, by following the [installation instructions](https://github.com/fsharp-editing/Forge/wiki/Getting-started)
 
 After installation, initialize paket using the `forge paket init` command
 
@@ -28,9 +32,7 @@ After installation, initialize paket using the `forge paket init` command
 
 This will download the *paket.exe* in the *.paket* directory along with *paket.dependencies* file in the project root directory.
 
-As we are going to use .NET Framework 4.6.1, we need to [restrict paket](https://fsprojects.github.io/Paket/dependencies-file.html#Framework-restrictions) to use only this version.
-
-It can be achieved by adding `framework: net461` in a new line in the *paket.dependencies* file.
+ To [restrict paket](https://fsprojects.github.io/Paket/dependencies-file.html#Framework-restrictions) to use the .NET Framework 4.6.1 version, we need to add, `framework: net461` in a new line in the *paket.dependencies* file.
 
 If you prefer to do this from your bash, you can achieve it using the following command
 
@@ -44,12 +46,16 @@ The next step is creating a [new project](https://github.com/fsharp-editing/Forg
 > forge new project -n FsTweet.Web --dir src -t suave
 ```
 
-This command creates a new console project in *FsTweet/src/FsTweet.Web* directory preconfigured with Suave template. 
+This command creates a new console project in *./src/FsTweet.Web* directory pre-configured with a Suave template. 
 
-```bash
-Unhandled error:
-Could not find file ".../FsTweet/src/build.sh".
-```
+> You may encounter the following error while running this command
+  ```bash
+  Unhandled error:
+  Could not find file ".../FsTweet/src/build.sh".
+  ```
+  This was a [known issue](https://github.com/fsharp-editing/Forge/issues/54#issuecomment-284559266) in Forge which has been fixed in the later version. You can ignore it in our case. 
+
+
 That's all!
 
 We can verify the setup by building the project using Forge
@@ -60,7 +66,7 @@ We can verify the setup by building the project using Forge
 
 This command internally calls the `fake` command to build the project. 
 
-Upon succesful completion of this command, we can find the *FsTweet.Web.exe* file in the *FsTweet/build* directory.
+Upon successful completion of this command, we can find the *FsTweet.Web.exe* file in the *FsTweet/build* directory.
 
 When you run it, 
 
@@ -79,15 +85,14 @@ It will start the Suave standalone web server on port `8080`.
 [21:42:45 INF] Smooth! Suave listener started in 138.226 with binding 127.0.0.1:8080
 ```
 
-You will be seeing `Hello World!` when you curl the application's root
+You will be seeing `Hello World!`, when you curl the application's root endpoint
 
 ```bash
 > curl http://127.0.0.1:8080/
 Hello World!
 ```
 
-As we will be building and running the application often during the course of our development, let's leverage Fake and Forge to simplify this mundane task.
-
+As we will be building and running the application often during our development, let's leverage Fake and Forge to simplify this mundane task.
 
 In the FAKE build script, *build.fsx*, remove the `Deploy` Target
 
@@ -139,6 +144,8 @@ With this alias in place, we can build and run our application using a single co
 
 # Summary
 
-In this part, we have learnt how to bootstrap a project from the scratch and configure it to use Paket and FAKE. 
+In this part, we have learned how to bootstrap a project from scratch and configure it to use Paket and FAKE. 
 
-Using Forge, we orchastrated this project setup and the cherry on the cake is the alias to build and run our project with a single command! 
+Using Forge, we orchestrated the project setup, and the cherry on the cake is the alias to build and run our project with a single command! 
+
+The source cod is available on [GitHub](https://github.com/demystifyfp/FsTweet/tree/v0.0)
