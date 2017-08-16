@@ -1,7 +1,6 @@
 ---
 title: "Part 0: Project Setup"
 date: 2017-08-15T20:02:30+05:30
-draft: true
 ---
 
 Hi,
