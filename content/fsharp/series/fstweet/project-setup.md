@@ -1,11 +1,12 @@
 ---
-title: "Part 0: Project Setup"
+title: "Setting Up FsTweet Project"
 date: 2017-08-15T20:02:30+05:30
+tags: [forge,FAKE,paket]
 ---
 
 Hi,
 
-In this zeroth part of the series on [Creating a Twitter Clone in F# using Suave](TODO), we will be starting the project from scratch using and configuring it to use [FAKE](https://fake.build/) and [Paket](https://fsprojects.github.io/Paket/)
+In this first part of the series on [Creating a Twitter Clone in F# using Suave](TODO), we will be starting the project from scratch using and configuring it to use [FAKE](https://fake.build/) and [Paket](https://fsprojects.github.io/Paket/)
 
 
 Let's get started by creating an empty directory with the name *FsTweet*
