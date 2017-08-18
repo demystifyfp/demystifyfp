@@ -12,7 +12,7 @@ In this post, we are going to extend our `FsTweet` app to render `Hello, World!`
 
 ## Adding Packages References
 
-Suave has a [good support](https://suave.io/dotliquid.html) for doing server side rendering using DotLiquid. To make use of this in our project, we need to refer the associated NuGet pacakges in *FsTweet.Web.fsproj*.
+Suave has [good support](https://suave.io/dotliquid.html) for doing server side rendering using DotLiquid. To make use of this in our project, we need to refer the associated NuGet packages in *FsTweet.Web.fsproj*.
 
 Let's use Forge to add the required packages using Paket
 
@@ -21,7 +21,7 @@ Let's use Forge to add the required packages using Paket
 > forge paket add Suave.DotLiquid
 ```
 
-> At the time of this writing there were some breaking changes in the latest version of DotLiquid. As the current version of Suave.DotLiquid uses DotLiquid version `2.0.64`, we are sticking to the same here. 
+> At the time of this writing, there were some breaking changes in the latest version of DotLiquid. As the current version of Suave.DotLiquid uses DotLiquid version `2.0.64`, we are sticking to the same here. 
 
 The next step is referring these packages in the `FsTweet.Web.fsproj`.
 
@@ -39,13 +39,14 @@ Suave.DotLiquid
   > echo 'DotLiquid' >> src/FsTweet.Web/paket.references
   > echo 'Suave.DotLiquid' >> src/FsTweet.Web/paket.references
   ```
+
 The last step is running the `forge install` command, an alias for the `paket install` command.
 
 ```bash
 > forge install
 ```
 
-This command adds the references of the Nuget packages provided in the *paket.references* file to the `FsTweet.Web.fsproj` file.
+This command adds the references of the NuGet packages provided in the *paket.references* file to the `FsTweet.Web.fsproj` file.
 
 ## Initializing DotLiquid
 
@@ -54,7 +55,7 @@ Now we have the required NuGet packages onboard
 DotLiquid requires the following global initilization settings to enable us to render the [liquid templates](https://shopify.github.io/liquid/).
 
 * A directory path which contains all our views 
-* Naming Convention to be used which referring view models in the views. 
+* Naming Convention to be used when referring view models in the views. 
 
 The [Suave.DotLiquid](https://www.nuget.org/packages/Suave.DotLiquid/) has helper functions to do this for us.
 
@@ -89,7 +90,7 @@ let main argv =
 
 ## Updating Build Script To Copy Views Directory
 
-With the above DotLiquid configuration in place, while running the `FsTweet.Web` application, we need to have the `views` directory in the current directory
+With the above DotLiquid configuration in place, while running the `FsTweet.Web` application, we need to have the `views` directory in the current directory.
 
 ```
 ├── build
@@ -104,7 +105,7 @@ We can achieve it in two ways.
 
 2. The second option is leveraging our build script to copy the entire `views` directory to the `build` directory.
 
-We are going to use the later one as it is an one time work rather than fiddling with the properties every time when we add a new content file
+We are going to use the latter one as it is a one time work rather than fiddling with the properties whenever we add a new liquid template file.
 
 To do this let's add a new Target in the FAKE build script called `Views` and copy the directory the FAKE's `CopyDir` function
 
@@ -176,7 +177,7 @@ The next step is adding a child page liquid template *guest/home.liquid* with so
 {% endblock %}
 ```
 
-This guest home page template `extends` the `master_page` template and provide values for the `head` and `content` placeholders.
+This guest home page template `extends` the `master_page` template and provides values for the `head` and `content` placeholders.
 
 ## Rendering Using Suave.DotLiquid
 
@@ -184,7 +185,7 @@ The final step is rendering the liquid templates from Suave.
 
 The *Suave.DotLiquid* package has a function called `page` which takes a relative file path (from the templates root directory) and a view model and returns a WebPart
 
-We just need to define the app using this `page` function. As the page is not using an view model we can use an empty string for the second parameter.
+We just need to define the app using this `page` function. As the page is not using a view model we can use an empty string for the second parameter.
 
 Let's also add a `path` filter in Suave to render the page only if the path is a root (`/`)
 
@@ -203,7 +204,7 @@ let main argv =
   0
 ```
 
-Now if you build and run the application using the `forge run` command, you can see a HTML document with the `Hello, World!` content in the browser on *http://localhost:8080/*
+Now if you build and run the application using the `forge run` command, you can see an HTML document with the `Hello, World!` content in the browser on *http://localhost:8080/*
 
 ## Summary
 
