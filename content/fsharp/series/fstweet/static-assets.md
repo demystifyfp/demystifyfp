@@ -10,7 +10,7 @@ Welcome to the third part of the [Creating a Twitter Clone in F# using Suave](TO
 
 In this post, we will be changing the guest homepage from displaying `Hello, World!` to a production ready landing page!
 
-![img](/img/fsharp/series/fstweet/guest-home-page.png)
+![Guest Home Page](/img/fsharp/series/fstweet/guest-home-page.png)
 
 ## Preparing Static Asset Files
 
@@ -51,7 +51,7 @@ Then we need to change our liquid templates to use these assets
    <p class="lead">Communicate with the world in a different way!</p>
    <!-- ... -->
 </div>
-{% endblock}
+{% endblock %}
 ```
 
 For simplicity, I am leaving the other static content that is modified in the templates, and you can find all the changes in [this diff](https://github.com/demystifyfp/FsTweet/commit/ae233c5407900b32af682407d902621e0a17bd38#diff-62ccd7caf19fda6d153b1958919d1f9d)
