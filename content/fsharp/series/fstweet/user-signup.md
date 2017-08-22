@@ -1,12 +1,12 @@
 ---
-title: "Handling User Singup Form and Validation"
+title: "Handling User signup Form and Validation"
 date: 2017-08-19T16:37:26+05:30
 tags: [suave, chessie, forge]
 ---
 
 In the [last blog post]({{< relref "static-assets.md" >}}), we added a cool landing page for *FsTweet* to increase the user signups. But the signup form and its backend are not ready yet!
 
-In this fourth part, we will be extending *FsTweet* to serve the singup page and implement its backend HTTP backend without persistence
+In this fourth part, we will be extending *FsTweet* to serve the signup page and implement its backend HTTP backend without persistence
 
 ## A New File For User Signup
 
@@ -27,9 +27,9 @@ Using Forge, we can achieve it using the following command
     -n src/FsTweet.Web/UserSignup.fs -u
 ```
 
-Though working with the command line is productive then its visual counterpart, the commands that we typed for creating and moving a file is verbose.
+Though working with the command line is productive than its visual counterpart, the commands that we typed for creating and moving a file is verbose.
 
-Forge has [an advanced feature called alias](https://github.com/fsharp-editing/Forge/wiki/aliases#alias-definition) using which we can get rid of the boilerplate to a good extent.
+Forge has [an advanced feature called alias](https://github.com/fsharp-editing/Forge/wiki/aliases#alias-definition) using which we can get rid of the boilerplate to a large extent.
 
 As we did for the forge [Run alias]({{< relref "project-setup.md" >}}) during the project setup, let's add few three more alias
 
@@ -49,7 +49,7 @@ If we had this alias beforehand, we could have used the following commands inste
 > forge moveUp web -n src/FsTweet.Web/UserSignup.fs
 ```
 
-> We can generalise the alias as 
+> We can generalize the alias as 
 ```bash
 forge {operation-alias} {project-alias} {other-arguments}
 ```
@@ -78,11 +78,13 @@ module Suave =
       >=> page "user/signup.liquid" ??? 
 ```
 
-The namespace represents the usecase or the feature that we are about to implement. The modules inside the namespace represent the different layers of the usecase implementation. The `Suave` module represents the `Web` layer of the User Signup feature. You can learn about organizing modules from [this blog post](https://fsharpforfunandprofit.com/posts/recipe-part3/). 
+The namespace represents the use case or the feature that we are about to implement. The modules inside the namespace represent the different layers of the use case implementation. 
+
+The `Suave` module defines the `Web` layer of the User Signup feature. You can learn about organizing modules from [this blog post](https://fsharpforfunandprofit.com/posts/recipe-part3/). 
 
 The `???` symbol is a placeholder that we need to fill in with a view model. 
 
-The view model has to capture user's email address, password and username.
+The view model has to capture user's email address, password, and username.
 
 ```fsharp
 // FsTweet.Web/UserSignup.fs
@@ -104,11 +106,11 @@ module Suave =
       >=> page "user/signup.liquid" emptyUserSignupViewModel
 ```
 
-As the name indicates `emptyUserSignupViewModel` provide the default values for the view model.
+As the name indicates, `emptyUserSignupViewModel` provide the default values for the view model.
 
 The `Error` property in the `UserSignupViewModel` record type is to communicate an error with the view. 
 
-The next step is creating a dotliquid template for the singup page. 
+The next step is creating a dotliquid template for the signup page. 
 
 ```html
 <!-- FsTweet.Web/views/user/signup.liquid -->
@@ -135,7 +137,7 @@ The next step is creating a dotliquid template for the singup page.
 
 In the template, the `name` attribute with its corresponding view model's property name as value is required to do the model binding on the server side. 
 
-An another thing to notice here is the `if` condition to display the error only if it is available. 
+And another thing to notice here is the `if` condition to display the error only if it is available. 
 
 The last step in serving the user signup page is adding this new webpart in the application.
 
@@ -161,7 +163,7 @@ If we run the application and hit `http://localhost:8080/signup` in the browser,
 
 ## Handling Signup Form POST request
 
-To handle the POST request duing the signup form submission, we need to have a WebPart configured. 
+To handle the POST request during the signup form submission, we need to have a WebPart configured. 
 
 On the same path `/signup` we need to have one WebPart for serving the signup page in response to GET request and an another for the POST request. 
 
@@ -220,7 +222,7 @@ from {(string * string option) list} to {UserSignupViewModel}
 
 In other words, we need to bind the request form data to the `UserSignupViewModel`.
 
-There is an in-built support for doing this Suave using `Suave.Experimental` package. 
+There is an inbuilt support for doing this Suave using `Suave.Experimental` package. 
 
 Let's add this to our `FsTweet.Web` project using paket and forge.
 
@@ -263,7 +265,7 @@ module Suave =
   // ...
 ```
 
-As the `bindEmptyForm` function returns a `generic` type as its first option, we need to explicitly specify the type to enable the model binding. 
+As the `bindEmptyForm` function returns a `generic` type as its first option, we need to specify the type to enable the model binding explicitly. 
 
 If the model binding succeeds, we just print the view model and redirects the user to the signup page as we did in the previous section.
 
@@ -280,31 +282,31 @@ When we rerun the program and do the form post again, we will get the following 
 
 ## Transforming View Model To Domain Model
 
-Now we have the server side representation of the submitted details in the form of `UserSignupViewModel`. The next step is validating this view model against a set of constraints before persisting them in a datastore. 
+Now we have the server side representation of the submitted details in the form of `UserSignupViewModel`. The next step is validating this view model against a set of constraints before persisting them in a data store. 
 
 In F#, a widely used approach is defining a domain model with illegal states unrepresentable and transform the view model to the domain model before proceeding with the next set of actions. 
 
-Let's take the `Username` property of the `UserSignupViewModel`. It is of type `string`. The reason why we have it as `string` is to enable model binding with ease. 
+Let's take the `Username` property of the `UserSignupViewModel`. It is of type `string`. The reason why we have it as a `string` is to enable model binding with ease. 
 
 That means, `Username` can have `null`, `""` or even a very long string! 
 
-Let's assume that we have a business requirement stating the username should not be empty and it can't have more than `12` characters. An ideal way to represent this requirement in our code is to type called `Username` and when we say a value of type `Username` it is gurenteed that all the specified requirements. 
+Let's assume that we have a business requirement stating the username should not be empty, and it can't have more than `12` characters. An ideal way to represent this requirement in our code is to type called `Username` and when we say a value of type `Username` it is guaranteed that all the specified requirements. 
 
 It is applicable for the other properties as well. 
 
-`Email` should have an valid email address and `Password` has to meet the application's password policy.
+`Email` should have a valid email address, and `Password` has to meet the application's password policy.
 
-Let's assume that we have a function `tryCreate` that takes `UserSignupViewModel` as its input, performs the validations based on the requirements and returns either a domain model `UserSignupRequest` or an validation error of type `string`.
+Let's assume that we have a function `tryCreate` that takes `UserSignupViewModel` as its input, performs the validations based on the requirements and returns either a domain model `UserSignupRequest` or a validation error of type `string`.
 
 ![View Model to Domain Model](/img/fsharp/series/fstweet/vm_to_dm.png)
 
 The subsequent domain actions will take `UserSignupRequest` as its input without bothering about the validness of the input!
 
-If we zoom into the `tryCreate` function, it will have three `tryCreate` function being called sequentially. Each of these functions take care of validating the individual properties and transforming them into their corresponding domain type. 
+If we zoom into the `tryCreate` function, it will have three `tryCreate` function being called sequentially. Each of these functions takes care of validating the individual properties and transforming them into their corresponding domain type. 
 
 ![Happy Path](/img/fsharp/series/fstweet/happy_path.png)
 
-If we encounter an validation error in any of these internal functions, we can short circuit and return the error that we found.
+If we encounter a validation error in any of these internal functions, we can short circuit and return the error that we found.
 
 ![Error Path](/img/fsharp/series/fstweet/error_path.png)
 
@@ -331,7 +333,7 @@ Chessie
 > forge install
 ```
 
-## Making Illegal States Unrepresentable
+## Making The Illegal States Unrepresentable
 
 As a first step, create a new module `Domain` in the *UserSignup.fs* and make sure it is above the `Suave` module.
 
@@ -348,7 +350,7 @@ module Domain =
   type Username = private Username of string
 ```
 
-The `private` constructor ensure that we can create a value of type `Username` only inside the `Domain` module. 
+The `private` constructor ensures that we can create a value of type `Username` only inside the `Domain` module. 
 
 Then add the `tryCreate` function as a static member function of `Username`
 
@@ -373,11 +375,11 @@ string -> Result<Username, string list>
 
 The `Result`, a type from the `Chessie` library, [represents](http://fsprojects.github.io/Chessie/reference/chessie-errorhandling-result-2.html) the result of our validation. It will have either the `Username` (if the input is valid) or a `string list` (for invalid input)
 
-> The presense `string list` instead of just `string` is to support an use case where we are interested in capturing all the errors. As we are going to capture only the first error, we can treat this as a `list` with only one `string`.
+> The presence `string list` instead of just `string` is to support an use case where we are interested in capturing all the errors. As we are going to capture only the first error, we can treat this as a `list` with only one `string`.
 
 The `ok` and `fail` are helper functions from `Chessie` to wrap our custom values with the `Success` and `Failure` part of the `Result` type respectively.  
 
-As we will need the the `string` representation of the `Username` to persist it in the datastore, let's add a [property](https://docs.microsoft.com/en-us/dotnet/fsharp/language-reference/members/properties) `Value` which returns the underlying actual `string` value. 
+As we will need the `string` representation of the `Username` to persist it in the data store, let's add a [property](https://docs.microsoft.com/en-us/dotnet/fsharp/language-reference/members/properties) `Value` which returns the underlying actual `string` value. 
 
 ```fsharp
 module Domain =
@@ -421,7 +423,7 @@ module Domain =
       | x -> Password x |> ok
 ```
 
-Now we have all indiviudal validation and transformation in place. The next step is composing them together and create a new type `SignupUserRequest` that represents the valid domain model version of the `SignupUserViewModel`
+Now we have all individual validation and transformation in place. The next step is composing them together and create a new type `SignupUserRequest` that represents the valid domain model version of the `SignupUserViewModel`
 
 ```fsharp
 module Domain =
@@ -435,7 +437,7 @@ module Domain =
 
 How do we create `SignupUserRequest` from `SignupUserViewModel`?
 
-With the help of [trial](http://fsprojects.github.io/Chessie/reference/chessie-errorhandling-trial-trialbuilder.html), an [computation expression](https://fsharpforfunandprofit.com/series/computation-expressions.html)(CE) builder from `Chessie` and the `TryCreate` functions that we created earlier we can achieve it with ease.
+With the help of [trial](http://fsprojects.github.io/Chessie/reference/chessie-errorhandling-trial-trialbuilder.html), a [computation expression](https://fsharpforfunandprofit.com/series/computation-expressions.html)(CE) builder from `Chessie` and the `TryCreate` functions that we created earlier we can achieve it with ease.
 
 ```fsharp
 module Domain =
@@ -458,7 +460,7 @@ module Domain =
 
 The `TryCreate` function in the `SignupUserRequest` takes a tuple with three elements and returns a `Result<SignupUserRequest, string list>`
 
-The `trail` CE takes care of short circuting if it encounter an validation error. 
+The `trail` CE takes care of short circuiting if it encounters a validation error. 
 
 ## Showing Validation Error 
 
@@ -501,7 +503,7 @@ module Suave =
 
 In our case, in case of success, as a dummy implementation, we just print the `SignupUserRequest` and redirect to the *signup* page again.
 
-During failure, we populate the `Error` property of the view model with the first item in the error messags list and rerender the *signup* page again.
+During failure, we populate the `Error` property of the view model with the first item in the error messages list and re-render the *signup* page again.
 
 As we are referring the liquid template path of the signup page in three places now, let's create a label for this value and use the label in all the places.
 
@@ -531,7 +533,7 @@ module Suave =
       ]
 ```
 
-Now if we build and run the application, we will be getting following console output for valid singup details.
+Now if we build and run the application, we will be getting following console output for valid signup details.
 
 ```bash
 {Username = Username "demystifyfp";
@@ -541,7 +543,7 @@ Now if we build and run the application, we will be getting following console ou
 
 ## Summary
 
-We came a long way in this blog post. We started with rendering the signup form and then we did the model binding using the `Suave.Experimental` library. 
+We came a long way in this blog post. We started with rendering the signup form, and then we did the model binding using the `Suave.Experimental` library. 
 
 Finally, we learned how to do validation and transform view model to a domain model using the Railway Programming technique with the help of the `Chessie` library.
 
