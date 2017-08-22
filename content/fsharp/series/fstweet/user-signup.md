@@ -42,7 +42,7 @@ As we did for the forge [Run alias]({{< relref "project-setup.md" >}}) during th
 
 The `web` is an alias for the project argument in the Forge commands. The `newFs` and `moveUp` alias are for the `new file` and `move file` operations respectively.
 
-If we had this alias beforehand, we could have used the following commands instead to do what we just did
+If we had this alias beforehand, we could have used the following commands to do what we just did
 
 ```bash
 > forge newFs web -n src/FsTweet.Web/UserSignup
@@ -199,7 +199,7 @@ module Suave =
       ]
 ```
 
-The placeholder implementation of the `handleUserSignup` WebPart prints the form values posted (from the [request](https://suave.io/Suave.html#def:member Suave.Http.HttpRequest.form)) in the console and redirects the user again the signup page.
+The placeholder implementation of the `handleUserSignup` WebPart prints the form values posted (from the [request](https://suave.io/Suave.html#def:member Suave.Http.HttpRequest.form)) in the console and redirects the user again to the signup page.
 
 When we rerun the program with this new changes, we can find the values being posted in the console upon submitting the signup form.
 
@@ -284,13 +284,13 @@ When we rerun the program and do the form post again, we will get the following 
 
 Now we have the server side representation of the submitted details in the form of `UserSignupViewModel`. The next step is validating this view model against a set of constraints before persisting them in a data store. 
 
-In F#, a widely used approach is defining a domain model with illegal states unrepresentable and transform the view model to the domain model before proceeding with the next set of actions. 
+In F#, a widely used approach is defining a domain model with the illegal states unrepresentable and transform the view model to the domain model before proceeding with the next set of actions. 
 
-Let's take the `Username` property of the `UserSignupViewModel`. It is of type `string`. The reason why we have it as a `string` is to enable model binding with ease. 
+Let's take the `Username` property of the `UserSignupViewModel` for example. 
 
-That means, `Username` can have `null`, `""` or even a very long string! 
+It is of type `string`. The reason why we have it as a `string` is to enable model binding with ease. That means, `Username` can have `null`, `""` or even a very long string! 
 
-Let's assume that we have a business requirement stating the username should not be empty, and it can't have more than `12` characters. An ideal way to represent this requirement in our code is to type called `Username` and when we say a value of type `Username` it is guaranteed that all the specified requirements. 
+Let's assume that we have a business requirement stating the username should not be empty, and it can't have more than `12` characters. An ideal way to represent this requirement in our code is to type called `Username` and when we say a value is of type `Username` it is guaranteed that all the specified requirements for `Username` has been checked and it is a valid one. 
 
 It is applicable for the other properties as well. 
 
