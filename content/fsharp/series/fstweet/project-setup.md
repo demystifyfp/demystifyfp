@@ -1,7 +1,7 @@
 ---
 title: "Setting Up FsTweet Project"
 date: 2017-08-15T20:02:30+05:30
-tags: [forge,FAKE,paket]
+tags: [forge,FAKE,paket,fsharp]
 ---
 
 Hi,

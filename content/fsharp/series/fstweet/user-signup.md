@@ -1,7 +1,7 @@
 ---
 title: "Handling User signup Form"
 date: 2017-08-19T16:37:26+05:30
-tags: [suave, forge]
+tags: [suave, forge,fsharp]
 ---
 
 In the [last blog post]({{< relref "static-assets.md" >}}), we added a cool landing page for *FsTweet* to increase the user signups. But the signup form and its backend are not ready yet!

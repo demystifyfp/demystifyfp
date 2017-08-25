@@ -1,7 +1,7 @@
 ---
-title: "User Signup Form Validation"
+title: "Validating New User Signup Form"
 date: 2017-08-25T08:34:25+05:30
-tags: [suave, chessie, rop]
+tags: [suave, chessie, rop,fsharp]
 ---
 
 Hi,
