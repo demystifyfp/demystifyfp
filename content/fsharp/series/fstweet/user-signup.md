@@ -276,4 +276,4 @@ When we rerun the program and do the form post again, we will get the following 
 
 In this blog post, We started with rendering the signup form, and then we learned how to do view model binding using the `Suave.Experimental` library. 
 
-The source code is available in [GitHub](https://github.com/demystifyfp/FsTweet/tree/v0.3)
+The source code is available on [GitHub](https://github.com/demystifyfp/FsTweet/tree/v0.3)

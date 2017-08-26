@@ -210,4 +210,4 @@ Now if you build and run the application using the `forge run` command, you can 
 
 In this blog post, we have seen how to set up a Suave application to render server side views using DotLiquid and also how to make use of FAKE build script to manage static files. 
 
-The source code is available in the [GitHub repository](https://github.com/demystifyfp/FsTweet/tree/v0.1). 
+The source code is available on [GitHub repository](https://github.com/demystifyfp/FsTweet/tree/v0.1). 
