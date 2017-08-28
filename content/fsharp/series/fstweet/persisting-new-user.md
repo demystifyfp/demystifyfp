@@ -1,12 +1,28 @@
 ---
 title: "Persisting New User"
-date: 2017-08-26T04:43:18+05:30
+date: 2017-08-30T04:43:18+05:30
 draft: true
 ---
 
 ```bash
-> forge paket add BCrypt.Net-Next -p src/FsTweet.Web/FsTweet.Web.fsproj
+> forge paket add SQLProvider -g Database \
+    -p src/FsTweet.Web/FsTweet.Web.fsproj
 ```
+
+```bash
+> forge paket add Npgsql -g Database \
+    --version 3.1.10 \
+    -p src/FsTweet.Web/FsTweet.Web.fsproj
+```
+
+```
+...
+/~/FsTweet/paket.dependencies contains package Npgsql 
+  in group Database already. ==> Ignored
+...
+```
+
+
 
 ```fsharp
 module Domain =
@@ -20,23 +36,17 @@ module Domain =
       BCrypt.Verify(password, this.Value) 
 
     static member Create (password : Password) =
-      let hash = BCrypt.HashPassword(password.Value)
-      PasswordHash hash
+      BCrypt.HashPassword(password.Value)
+      |> PasswordHash
 ```
 ```fsharp
 module Domain =
-  type UserSignupRequest = {
-    // ...
-    PasswordHash PasswordHash
+  // ...
+  type CreateUserRequest = {
+    Username : Username
+    PasswordHash : PasswordHash
+    Email : EmailAddress
   }
-  with static member TryCreate (username, password, email) =
-        trial {
-          // ...
-          return {
-            // ...
-            PasswordHash = PasswordHash.Create password
-          }
-        }
 ```
 
 ```fsharp

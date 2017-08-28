@@ -21,7 +21,7 @@ Let's use Forge to add the required packages using Paket
 > forge paket add Suave.DotLiquid
 ```
 
-> At the time of this writing, there were some breaking changes in the latest version of DotLiquid. As the current version of Suave.DotLiquid uses DotLiquid version `2.0.64`, we are sticking to the same here. 
+> At the time of this writing, there are some breaking changes in the latest version of DotLiquid. As the current version of Suave.DotLiquid uses DotLiquid version `2.0.64`, we are sticking to the same here. 
 
 The next step is referring these packages in the `FsTweet.Web.fsproj`.
 

@@ -1,6 +1,6 @@
 ---
 title: "Setting Up Database Migration"
-date: 2017-08-25T09:38:55+05:30
+date: 2017-08-26T18:47:29+05:30
 tags: [FAKE, FluentMigrator, OOInFsharp, fsharp]
 ---
 
@@ -12,7 +12,7 @@ The next step is persisting it in a database. We are going to use [PostgreSQL](h
 
 In this sixth part of the [Creating a Twitter Clone in F# using Suave](TODO) blog post series, we are going to learn how to setup PostgreSQL database migrations in fsharp using [Fluent Migrator](https://github.com/fluentmigrator/fluentmigrator). 
 
-In the [following blog post]({{< relref "persisting-new-user.md" >}}), we will be persisting the signup details. 
+In the [following blog post]({{< relref "orchestrating-user-signup.md" >}}), we will be orchastrating the user signup. 
 
 ## Creating a Database Migrations Project
 
@@ -130,8 +130,10 @@ Target "Build" (fun _ ->
 To run the migration against Postgres, we need to install the [Npgsql](http://www.npgsql.org/) package from NuGet.
 
 ```bash
-> forge paket add Npgsql -g Database
+> forge paket add Npgsql -g Database --version 3.1.10
 ```
+
+> At the time of this writing there is [an issue](https://github.com/npgsql/npgsql/issues/1603) with the latest version of Npgsql. So, we are using the version `3.1.10` here. 
 
 FAKE has inbuilt support for [running fluent migration](https://fake.build/todo-fluentmigrator.html) from the build script.
 
