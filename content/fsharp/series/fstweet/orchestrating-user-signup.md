@@ -93,9 +93,35 @@ module Domain =
 
 We are making use of [RNGCryptoServiceProvider](https://msdn.microsoft.com/en-us/library/system.security.cryptography.rngcryptoserviceprovider(v=vs.110).aspx) from the .NET standard library to generate the random bytes and convert them to a string using [Base64Encoding](https://msdn.microsoft.com/en-us/library/dhx0d524(v=vs.110).aspx)
 
+
+## Canonicalizing Username And Email Address
+
+To enable the uniqueness check on the `Username` and the `EmailAddress` fields, we need to canonicalize both of them.
+
+In our case, trimming the white-space characters and convtering to the string to lower case should suffice. 
+
+To do it, we can use the existing `TryCreate` function in the `Username` and `EmailAddress` type. 
+
+```fsharp
+type Username = private Username of string with
+    static member TryCreate (username : string) =
+      match username with
+      // ...
+      | x -> x.Trim().ToLowerInvariant() |> Username |> ok
+    // ...
+
+type EmailAddress = private EmailAddress of string with
+  // ...
+  static member TryCreate (emailAddress : string) =
+    try 
+      // ...
+      emailAddress.Trim().ToLowerInvariant() |>  EmailAddress  |> ok
+    // ...
+```
+
 ## A Type For The Create User Function
 
-We now have both the `PasswordHash` and the random `VerifcationCode` in place to persist them along with the other user details. 
+We now have both the `PasswordHash` and the random `VerifcationCode` in place to persist them along with the canonicalized `Username` and `EmailAddress`. 
 
 As a first step towards persisting a new user details, let's define a type signature for the Create User function that we will be implementing in the next blog post. 
 
