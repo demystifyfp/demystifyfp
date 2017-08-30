@@ -8,31 +8,31 @@ Hi,
 
 Welcome back to the seventh part of [Creating a Twitter Clone in F# using Suave](TODO) blog post series.
 
-In this part we will be orchestrating the user signup usecase. 
+In this part, we will be orchestrating the user signup use case. 
 
-## Requirments
+## Requirements
 
-Before dive into the implementation, let's spend some to jot down the requirement of the user sign up process. 
+Before diving into the implementation, let's spend some time to jot down the requirements of the user sign up. 
 
-1. If the user submitted invalid details, we should let him/her to know about the error (which we already implemented in the [fifth]({{< relref "user-signup-validation.md" >}}) part)
+1. If the user submitted invalid details, we should let him/her know about the error (which we already implemented in the [fifth]({{< relref "user-signup-validation.md" >}}) part)
 
-2. We also need to check the whether the username or the email provided by the user has been already used by someone else and report it, if we found it is not available.
+2. We also need to check the whether the username or the email provided by the user has been already used by someone else and report it if we found it is not available.
 
-3. If all the details are fine, then we need to persist the user details with his password hashed and also a randomly generated verification code. 
+3. If all the details are well, then we need to persist the user details with his password hashed and also a randomly generated verification code. 
 
 4. Then we need to send an email to the provided email address with the verification code. 
 
-5. Upon receiving an URL with the verification code, the user will be nagvigating to the provided URL to complete his singup process. 
+5. Upon receiving an URL with the verification code, the user will be navigating to the provided URL to complete his signup process. 
 
 
-In this blog post we are going to implement the [the service layer](https://lostechies.com/jimmybogard/2008/08/21/services-in-domain-driven-design/) part of the user signup which co-ordinates the steps 2 to 4.
+In this blog post, we are going to implement the [service layer](https://lostechies.com/jimmybogard/2008/08/21/services-in-domain-driven-design/) part of the user signup which coordinates the steps two, three and four.
 
 
 ## Generating Password Hash
 
-As a first step, let's generate the hash for the password provided by the user. 
+As a first step, let's create the hash for the password provided by the user. 
 
-To generate the hash we are going to use [the Bcrypt](https://en.wikipedia.org/wiki/Bcrypt) algorithm. In .NET we can leverage this algorithm to generate hash using the [Bcrypt.Net](https://github.com/BcryptNet/bcrypt.net) library.
+To generate the hash, we are going to use [the Bcrypt](https://en.wikipedia.org/wiki/Bcrypt) algorithm. In .NET we can use the [Bcrypt.Net](https://github.com/BcryptNet/bcrypt.net) library to create the password hash using the Bcrypt algorithm.
 
 Let's add its NuGet package to our Web project
 ```bash
@@ -58,17 +58,17 @@ module Domain =
       |> PasswordHash
 ```
 
-As [we did]({{< relref "user-signup-validation.md#making-the-illegal-states-unrepresentable">}}) for the other Domain types `PasswordHash` has a private constructor function to prevent it from creating from outside. 
+As [we did]({{< relref "user-signup-validation.md#making-the-illegal-states-unrepresentable">}}) for the other Domain types, `PasswordHash` has a private constructor function to prevent it from creating from outside. 
 
 The static function `Create` takes care of creating the password hash from the provided password using the `Bcrypt` library. 
 
 The `Value` property provides the underlying string representation of the `PasswordHash` type. We will be using while persisting the user details. 
 
-> We are placing all the `Domain` types in `UserSignup` namespace now. Some of the types that we declared here may be needed for the other usecases. We will be doing the module reorganization when we require it. 
+> We are placing all the `Domain` types in `UserSignup` namespace now. Some of the types that we declared here may be needed for the other use cases. We will be doing the module reorganization when we require it. 
 
 ## Generating Random Verification Code
 
-Like `PasswordHash`, let's create a domain type for the verification code with a `Value` property and a static function to `Create` it.
+Like `PasswordHash`, let's create a domain type for the verification code with a `Value` property and a static function to create it.
 
 ```fsharp
 // UserSignup.fs
@@ -77,15 +77,19 @@ module Domain =
   open System.Security.Cryptography
   // ...
   type VerificationCode = private VerificationCode of string with
+
     member this.Value =
       let (VerificationCode verificationCode) = this
       verificationCode
+
     static member Create () =
-      use rngCsp = new RNGCryptoServiceProvider()
       let verificationCodeLength = 15
       let b : byte [] = 
         Array.zeroCreate verificationCodeLength
+      
+      use rngCsp = new RNGCryptoServiceProvider()
       rngCsp.GetBytes(b)
+
       System.Convert.ToBase64String b
       |> VerificationCode 
 ```
@@ -97,7 +101,7 @@ We are making use of [RNGCryptoServiceProvider](https://msdn.microsoft.com/en-us
 
 To enable the uniqueness check on the `Username` and the `EmailAddress` fields, we need to canonicalize both of them.
 
-In our case, trimming the white-space characters and convtering to the string to lower case should suffice. 
+In our case, trimming the white-space characters and converting to the string to lower case should suffice. 
 
 To do it, we can use the existing `TryCreate` function in the `Username` and `EmailAddress` type. 
 
@@ -106,7 +110,9 @@ type Username = private Username of string with
     static member TryCreate (username : string) =
       match username with
       // ...
-      | x -> x.Trim().ToLowerInvariant() |> Username |> ok
+      | x -> 
+        x.Trim().ToLowerInvariant() 
+        |> Username |> ok
     // ...
 
 // ...
@@ -116,7 +122,8 @@ type EmailAddress = private EmailAddress of string with
   static member TryCreate (emailAddress : string) =
     try 
       // ...
-      emailAddress.Trim().ToLowerInvariant() |>  EmailAddress  |> ok
+      emailAddress.Trim().ToLowerInvariant() 
+      |>  EmailAddress  |> ok
     // ...
 ```
 
@@ -124,9 +131,10 @@ type EmailAddress = private EmailAddress of string with
 
 We now have both the `PasswordHash` and the random `VerifcationCode` in place to persist them along with the canonicalized `Username` and `EmailAddress`. 
 
-As a first step towards persisting a new user details, let's define a type signature for the Create User function that we will be implementing in the next blog post. 
+As a first step towards persisting new user details, let's define a type signature for the Create User function that we will be implementing in an upcoming blog post. 
 
-First we need a type to represent the create user request
+First, we need a type to represent the create user request
+
 ```fsharp
 // UserSignup.fs
 module Domain =
@@ -151,7 +159,7 @@ module Domain =
 
 As creating a new user is a database operation, things might go wrong. We also need to account the uniqueness check of the `Username` and the `Email` properties. 
 
-Let's define types for accomodating these scenarios as well.
+Let's define types for accommodating these scenarios as well.
 
 ```fsharp
 // UserSignup.fs
@@ -164,7 +172,7 @@ module Domain =
   // ...
 ```
 
-With the help of the types that we declared so far we can now write the type for the create user function
+With the help of the types that we declared so far, we can now declare the type for the create user function
 
 ```fsharp
 type CreateUser = 
@@ -175,9 +183,9 @@ The [AsyncResult](https://fsprojects.github.io/Chessie/reference/chessie-errorha
 
 ## A Type For The Send Signup Email Function
 
-Upon creating a new user we need to send a new signup email to the user. Let's create type for this as we did for `CreateUser`. 
+Upon creating a new user, we need to send a new signup email to the user. Let's create type for this as we did for `CreateUser`. 
 
-The input for this function are `Username`, `EmailAddress` and the `VerificationCode`. 
+The inputs for this function are `Username`, `EmailAddress`, and the `VerificationCode`. 
 
 ```fsharp
 // UserSignup.fs
@@ -200,7 +208,7 @@ module Domain =
   // ...
 ```
 
-If email sent successfully, we will be returning `unit` .
+If the email sent successfully, we would be returning `unit` .
 
 With the help of these two types, we can declare the `SendSignupEmail` type as 
 
@@ -241,7 +249,7 @@ module Domain =
   // ...
 ```
 
-For successful sign up, we will be returning a value of type `UserId`, which we declared earlier. 
+For successful signup, we will be returning a value of type `UserId`, which we declared earlier. 
 
 ```fsharp
 type SignupUser = 
@@ -249,11 +257,11 @@ type SignupUser =
       -> AsyncResult<UserId, UserSignupError>
 ```
 
-> We are not going to use this `SignupUser` type anywhere else and it is just for illustration. 
+> We are not going to use this `SignupUser` type anywhere else, and it is just for illustration. 
 
 ## Implementing The SignupUser Function
 
-Now we know the inputs and the outputs of the `SignupUser` function and it is time to get our hands dirty!
+Now we know the inputs and the outputs of the `SignupUser` function, and it is time to get our hands dirty!
 
 ```fsharp
 module Domain =
@@ -265,7 +273,7 @@ module Domain =
   }
 ``` 
 
-Like the [trial]({{< relref "user-signup-validation.md#making-the-illegal-states-unrepresentable">}}) computation that we used to do the user signup form validation, the [asyncTrail](https://fsprojects.github.io/Chessie/reference/chessie-errorhandling-asynctrial-asynctrialbuilder.html) computation expression is going to help us here to do error handling in asynchronous operations. 
+Like the [trial]({{< relref "user-signup-validation.md#making-the-illegal-states-unrepresentable">}}) computation that we used to do the user signup form validation, the [asyncTrail](https://fsprojects.github.io/Chessie/reference/chessie-errorhandling-asynctrial-asynctrialbuilder.html) computation expression is going to help us here to do the error handling in asynchronous operations. 
 
 The first step is creating a value of type `CreateUserRequest` from `UserSignupRequest`
 
@@ -280,7 +288,7 @@ let signupUser ... (req : UserSignupRequest) = asyncTrail {
   // TODO
 }
 ```
-> The `...` notation is just a convention that we are using here to avoid repeating the parameters and it is not part of the fsharp language syntax 
+> The `...` notation is just a convention that we are using here to avoid repeating the parameters, and it is not part of the fsharp language syntax 
 
 The next step is calling the `createUser` function with the `createUserReq`
 
@@ -312,7 +320,7 @@ let signupUser ... (sendEmail : SendSignupEmail) ... = asyncTrail {
 }
 ```
 
-Now you would be getting an compiler error 
+Now you would be getting a compiler error 
 
 ![Bind Error](/img/fsharp/series/fstweet/bind-error.png)
 
@@ -344,18 +352,17 @@ The signature of the `TryCreate` function is
 The signature of the `TryCreate` function of the Domain types are
 
 ```fsharp
-Username.TryCreate :: string -> Result<Username, string>
-Password.TryCreate :: string -> Result<Password, string>
-EmailAddress.TryCreate :: string -> Result<EmailAddress, string>
+string -> Result<Username, string>
+string -> Result<Password, string>
+string -> Result<EmailAddress, string>
 ```
 
 Let's focus our attention to the type that represents the result of a failed computation
 
 ```fsharp
-UserSignupRequest.TryCreate :: ... -> Result<..., string>
-Username.TryCreate :: ... -> Result<..., string>
-Password.TryCreate :: ... -> Result<..., string>
-EmailAddress.TryCreate :: ... -> Result<..., string>
+... -> Result<..., string>
+... -> Result<..., string>
+... -> Result<..., string>
 ```
 
 All are of `string` type!
@@ -363,12 +370,11 @@ All are of `string` type!
 Coming back to the `signupUser` function what we are implementing, here is a type signature of the functions
 
 ```fsharp
-signupUser :: ... -> AsyncResult<..., UserSignupError>
-createUser :: ... -> AsyncResult<..., CreateUserError>
-sendEmail :: ... -> AsyncResult<..., SendEmailError>
+... -> AsyncResult<..., CreateUserError>
+... -> AsyncResult<..., SendEmailError>
 ```
 
-In this case the types that are reprensenting the failure are of different type. That's thing that we need to fix!
+In this case, the types that are representing the failure are of different type. That's thing that we need to fix!
 
 ![Async Trail Output Mismatch](/img/fsharp/series/fstweet/asynctrail-bind-shape.png)
   
@@ -378,7 +384,7 @@ If we transform (or map) the failure type to `UserSignupError`, then things woul
 
 ## Mapping AsyncResult Failure Type
 
-> Disclaimer: You may find this section hard or confusing to get it in the first shot. A recommendended approach would be working out the following implementation on your own and use the implementation provided here as a reference. And also if you are thinking of taking a break, this is a right time!
+> You may find this section hard or confusing to get it in the first shot. A recommended approach would be working out the following implementation on your own and use the implementation provided here as a reference. And also if you are thinking of taking a break, this is a right time!
 
 We already have a union cases which maps `CreateUserError` and `SendEmailError` types to `UserSignupError`
 
@@ -388,11 +394,11 @@ type UserSignupError =
 | SendEmailError of SendEmailError
 ```
 
-These union case identifiers are actually functions which has the following signature
+These union case identifiers are functions which have the following signature
 
 ```fsharp
-CreateUserError :: CreateUserError -> UserSignupError
-SendEmailError :: SendEmailError -> UserSignupError
+CreateUserError -> UserSignupError
+SendEmailError -> UserSignupError
 ```
 
 But we can't use it directly, as the `CreateUserError` and the `SendEmailError` are part of the `AsyncResult` type!
@@ -400,13 +406,24 @@ But we can't use it directly, as the `CreateUserError` and the `SendEmailError` 
 What we want to achieve is mapping 
 
 ```fsharp
-AsyncResult<UserId, CreateUserError> -> AsyncResult<UserId, UserSignupError>
+AsyncResult<UserId, CreateUserError>
+```
+to 
+
+```fsharp
+AsyncResult<UserId, UserSignupError>
 ```
 
 and
 
 ```fsharp
-AsyncResult<unit, SendEmailError> -> AsyncResult<unit, UserSignupError>
+AsyncResult<unit, SendEmailError>
+```
+
+to 
+
+```fsharp
+AsyncResult<unit, UserSignupError>
 ```
 
 Accomplishing this mapping is little tricky. 
@@ -424,15 +441,20 @@ module Domain =
 The `mapAsyncFailure` function is a generic function with the following type signature. 
 
 ```fsharp
-mapAsyncFailure :: 'a -> 'b -> AsyncResult<'c, 'a> -> AsyncResult<'c, 'b>
+'a -> 'b -> AsyncResult<'c, 'a> -> AsyncResult<'c, 'b>
 ```
 
-It takes a function `f` which maps a type `a` to `b` and an `AsyncResult` as its input. It's output is an `AsyncResult` with its failure type mapped using the given function `f`. 
+It takes a function `f` which maps a type `a` to `b` and an `AsyncResult` as its input. Its output is an `AsyncResult` with its failure type mapped using the given function `f`. 
 
 The first step to do this mapping is to transform 
 
 ```fsharp
-AsyncResult<'c, 'a> -> Async<Result<'c, 'a>>
+AsyncResult<'c, 'a>
+```
+to
+
+```fsharp
+Async<Result<'c, 'a>>
 ```
 
 The `AsyncResult` type is defined in Chessie as a single case discriminated union case `AR`
@@ -455,13 +477,13 @@ The next step is mapping the value that is part of the `Async` type.
 Async<'a> -> Async<'b>
 ```
 
-We can again make use of the Chessie library again by using its `map` function. This map function like other `map` functions in the fsharp standard module, takes a function as its input to do the mapping.
+We can again make use of the Chessie library again by using its `map` function. This map function like other `map` functions in the fsharp standard module takes a function as its input to do the mapping.
 
 ```fsharp
 'a -> 'b -> Async<'a> -> Async<'b>
 ```
 
-The easier way to understand is to think `Async` as a box. All mapping function does is takes the value out of the `Async` box, perform the mapping, then put it to back to a new `Async` box and return it.
+The easier way to understand is to think `Async` as a box. All mapping function does is takes the value out of the `Async` box, perform the mapping using the provided function, then put it to back to a new `Async` box and return it.
 
 ![Async Map](/img/fsharp/series/fstweet/async-map.png)
 
@@ -474,7 +496,7 @@ let mapAsyncFailure f aResult =
   |> Async.map ???
 ```
 
-We can't give the `CreateUserError` union case function directly as the `f` parameter here, it only maps `CreateUserError` to `UserSignupError`. 
+We can't give the `CreateUserError` union case function directly as the `f` parameter here; it only maps `CreateUserError` to `UserSignupError`. 
 
 The reason is, the value inside the `Async` is not `CreateUserError`, it's `Result<UserId, CreateUserError>`.
 
@@ -493,7 +515,7 @@ let mapAsyncFailure f aResult =
   |> Async.map (mapFailure f)
 ```
 
-The final step is putting the `Async` of `Result` type back to `AsyncResult` type. As `AsyncResult` is defined as single case discrimated union, we can use the `AR` union case to complete the mapping.
+The final step is putting the `Async` of `Result` type back to `AsyncResult` type. As `AsyncResult` is defined as single case discriminated union, we can use the `AR` union case to complete the mapping.
 
 ```fsharp
 let mapAsyncFailure f aResult =
@@ -515,7 +537,7 @@ The reason for this signature is because the library treats failures as a list i
 
 As we are treating the failure in the `Result` type as a single item, we can't directly make use of it.
 
-However, we can leverage it to fit our requirement by having our own implementation, which takes the first item from the failure list, call the mapping function and then create a list from the output of the map function.
+However, we can leverage it to fit our requirement by having an implementation, which takes the first item from the failure list, call the mapping function and then create a list from the output of the map function.
 
 ```fsharp
 // UserSignup.fs
@@ -534,11 +556,11 @@ This `mapFailure` function has the signature
 'a -> 'b -> Result<'c, 'a> -> Result<'c, 'b> 
 ```
 
-With this, we are done with the mapping of Async Result failure type.
+With this, we are done with the mapping of `AsyncResult` failure type.
 
 ## Going Back To The signupUser Function
 
-In previous section, we implemented a solution to fix the compiler error that we encountered while defining the `signupUser` function. 
+In the previous section, we implemented a solution to fix the compiler error that we encountered while defining the `signupUser` function. 
 
 With the `mapAsyncFailure` function, we can rewrite the `signupUser` function to transform the error type and return the `UserId` if everything goes well.
 
