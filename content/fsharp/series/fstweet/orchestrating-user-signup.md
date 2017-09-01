@@ -1,7 +1,7 @@
 ---
 title: "Orchestrating User Signup"
 date: 2017-08-28T09:38:55+05:30
-tags: [Chessie, rop, suave, fsharp]
+tags: [Chessie, rop, fsharp]
 ---
 
 Hi,

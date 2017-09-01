@@ -1,6 +1,6 @@
 ---
 title: "Persisting New User"
-date: 2017-08-30T04:43:18+05:30
+date: 2017-08-31T06:55:16+05:30
 draft: true
 ---
 
