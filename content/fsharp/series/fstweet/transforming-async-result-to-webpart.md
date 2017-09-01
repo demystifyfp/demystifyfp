@@ -6,7 +6,7 @@ tags: [Chessie, rop, suave, fsharp]
 
 Hi there!
 
-In the [last post]({{< relref "orchestrating-user-signup.md" >}}), using the Chessie library we orchestrated the user signup process. 
+In the [last post]({{< relref "orchestrating-user-signup.md" >}}), using the Chessie library, we orchestrated the user signup process. 
 
 There are three more things that we need to do wrap up the user signup workflow.
 
@@ -17,7 +17,7 @@ There are three more things that we need to do wrap up the user signup workflow.
 3. Adding the presentation layer to inform the user about his/her progress in the signup process. 
 
 
-In this blog post, we are going to pick the third item. We are going to fake the implementation of user creation and sending email. 
+In this blog post, we are going to pick the third item. We will be faking the implementation of user creation and sending an email. 
 
 
 ## Domain To Presentation Layer
@@ -30,17 +30,14 @@ Let's take our scenario.
 
 The domain layer returns `AsyncResult<UserId, UserSignupError>` and the presentation layer needs `WebPart` as we are using Suave.
 
-It is one of best practice to keep your implemenation agonistic of the library/framework!
-
 So, all we need is a function with the following signature. 
 
 ```fsharp
 UserSignupViewModel -> 
-  AsyncResult<UserId, UserSignupError> ->
-    Async<WebPart>
+  AsyncResult<UserId, UserSignupError> -> Async<WebPart>
 ```
 
-We need `UserSignupViewModel` to communicate the error details with the user. If you are wondering why are we returning `Async<WebPart>` instead of `WebPart`, just hold your curiosity for few more minutes!
+The `UserSignupViewModel` is required communicate the error details with the user along with the information that he/she submitted. 
 
 Let's start our implementation by creating a new function `handleUserSignupAsyncResult` in the `Suave` module.
 
@@ -55,7 +52,7 @@ module Suave =
   let handleUserSignup ... = // ...
 ```
 
-> We are using the prefix `handle` instead of `map` here as we are going to do a side effect (log to console in case of an error) in addition to the transforming the type.
+> We are using the prefix `handle` instead of `map` here as we are going to do a side effect (printing in console in case of error) in addition to the transforming the type.
 
 The first step is transforming 
 
@@ -88,9 +85,9 @@ to
 Async<WebPart>
 ```
 
-As we did for [mapping Async Failure]({{< relref "orchestrating-user-signup.md#mapping-asyncresult-failure-type">}}) in the previous post, We make use of the `map` function on the Async module to carry out this tranformation.
+As we did for [mapping Async Failure]({{< relref "orchestrating-user-signup.md#mapping-asyncresult-failure-type">}}) in the previous post, We make use of the `map` function on the Async module to carry out this transformation.
 
-Let's assume that we are having a method `handleUserSignupResult` which maps a `Result` type to `WebPart`
+Let's assume that we have a method `handleUserSignupResult` which maps a `Result` type to `WebPart`
 
 ```fsharp
 UserSignupViewModel -> Result<UserId, UserSignupError> -> WebPart
@@ -105,15 +102,17 @@ let handleUserSignupAsyncResult viewModel aResult =
   |> Async.map (handleUserSignupResult viewModel)
 ```
 
-> The `map` function in the `Async` module is an extension provided by the Chessie library and it is not part of the standard `Async` module
+> The `map` function in the `Async` module is an extension provided by the Chessie library, and it is not part of the standard `Async` module
 
 Now we have a scaffolding for transforming the domain type to the presentation type. 
 
 ## Transforming UserSignupResult to WebPart
 
-Let's define the `handleUserSignupResult` function that we left as a placeholder in the previous section 
+In this section, we are going to define the `handleUserSignupResult` function that we left as a placeholder in the previous section. 
 
-If the result is success, we need to redirect the user to a signup success page. 
+We are going to define it by having separate functions for handling success and failures and then use them in the actual definition of `handleUserSignupResult`
+
+If the result is a success, we need to redirect the user to a signup success page. 
 
 ```fsharp
 // UserSignup.fs
@@ -126,9 +125,9 @@ module Suave =
   // ...
 ```
 
-We are leaving the second paramter as `_`, as we are not interested in the result of the successful user signup (`UserId`) here.   
+We are leaving the second parameter as `_`, as we are not interested in the result of the successful user signup (`UserId`) here.   
 
-We will be handing the path `/signup/success/{username}` later in this blog post. 
+We will be handing the path `/signup/success/{username}` [later in this blog post]({{< relref "transforming-async-result-to-webpart.md#adding-signup-success-page" >}}). 
 
 In case of failure, we need to account for two kinds of error 
 
@@ -136,7 +135,7 @@ In case of failure, we need to account for two kinds of error
 
 2. Send Email Error
 
-let's define seperate functions for handing each kinds of error.
+let's define separate functions for handing each kind of error.
 
 ```fsharp
 module Suave =
@@ -158,13 +157,13 @@ module Suave =
   // ...
 ```
 
-We are updating the `Error` property with the appropriate error messages and rerender the signup page in case of unique constraint violation errors. 
+We are updating the `Error` property with the appropriate error messages and re-render the signup page in case of unique constraint violation errors. 
 
-For exceptions, which we modeled as `Error` here, we rerender the signup page with an error message as *something went wrong* and print the actual error on the console. 
+For exceptions, which we modeled as `Error` here, we re-render the signup page with an error message as *something went wrong* and printed the actual error in the console. 
 
 Ideally, we need to have a logger to capture these errors. We will be implementing them in an another blog post. 
 
-We need to do the similar thing for handling errors during sending emails.
+We need to do the similar thing for handling error while sending emails.
 
 ```fsharp
 module Suave =
@@ -179,7 +178,7 @@ module Suave =
   // ...
 ```
 
-> To avoid the complexity we are just printing the error. 
+> To avoid the complexity, we are just printing the error. 
 
 Then define the `handleUserSignupError` function which handles the `UserSignupError` using the two functions that we just defined.
 
@@ -197,9 +196,9 @@ module Suave =
 
 The `errs` parameter is a list of `UserSignupError` as the Result type models failures as lists. 
 
-In our application, we are treating it as list with one error.
+In our application, we are treating it as a list with one error.
 
-Now we have functions to tranform both the Sucess and the Failure part of the `UserSignupResult`. 
+Now we have functions to transform both the Sucess and the Failure part of the `UserSignupResult`. 
 
 With the help of these functions, we can define the `handleUserSignupResult` using the [either](https://fsprojects.github.io/Chessie/reference/chessie-errorhandling-trial.html) function from Chessie
 
@@ -215,7 +214,7 @@ module Suave =
   // ...
 ```
 
-With this we are done with the following transformation.
+With this, we are done with the following transformation.
 
 ```fsharp
 AsyncResult<UserId, UserSignupError> -> Async<WebPart>
@@ -223,7 +222,7 @@ AsyncResult<UserId, UserSignupError> -> Async<WebPart>
 
 ## Wiring Up WebPart
 
-In the previous section, we defined functions to tranform the result of a domain functionality to its corresponding presentation component.
+In the previous section, we defined functions to transform the result of a domain functionality to its corresponding presentation component.
 
 The next work is wiring up this presentation component with the function which handles the user signup `POST` request. 
 
@@ -248,7 +247,7 @@ let handleUserSignup ctx = async {
 }
 ```
 
-As a first step towards wiring up the user signup result, we need to use the pattern matching on the result instead of using the `either` function. 
+As a first step towards wiring up the user signup result, we need to use the pattern matching on the validation result instead of using the `either` function. 
 
 ```fsharp
 let handleUserSignup ctx = async {
@@ -268,7 +267,7 @@ let handleUserSignup ctx = async {
 }
 ```
 
-The reason for this split is we will be doing an asynchronous operation if the request is valid. For the invalid request there is no asynchronous operation involved. 
+The reason for this split is we will be doing an asynchronous operation if the request is valid. For the invalid request, there is no asynchronous operation involved. 
 
 The next step is changing the signature of the `handleUserSignup` to take `signupUser` function as its parameter 
 
@@ -300,7 +299,7 @@ let handleUserSignup signupUser ctx = async {
 }
 ```
 
-For valid signup request, we call the `signupUser` function and then pass the return value of this function to the `handleUserSignupAsyncResult` function which returns a `Async<WebPart>`
+For valid signup request, we call the `signupUser` function and then pass the return value of this function to the `handleUserSignupAsyncResult` function which returns an  `Async<WebPart>`
 
 Through `let!` binding we retrieve the `WebPart` from `Async<WebPart>` and then using it to send the response back to the user. 
 
@@ -313,7 +312,7 @@ Through `let!` binding we retrieve the `WebPart` from `Async<WebPart>` and then 
 
 As mentioned earlier, we are going to implement the actual functionality of `CreateUser` and `SendSignupEmail` in the later blog posts. 
 
-But that doesn't mean we need to wait till the end to see the final output in the browser. 
+But that doesn't mean we need to wait until the end to see the final output in the browser. 
 
 These two types are just functions! So, We can provide a fake implementation of them and exercise the functionality that we wrote!
 
@@ -342,7 +341,7 @@ module Email =
 // ...
 ```
 
-The next step is using the fake implementaion to complete the functionality
+The next step is using the fake implementation to complete the functionality
 
 ```fsharp
 // ...
@@ -364,7 +363,7 @@ There are two patterns that we have employed here.
 
 * Dependency Injection using Partial Application
 
-  > We partiall apply the first two parameters of the `signupUser` function to inject the depencencies that are responsible for creating the user and sending the signup email. Scott Wlaschin written [an excellent article](https://fsharpforfunandprofit.com/posts/dependency-injection-1/) on this subject. 
+  > We partially applied the first two parameters of the `signupUser` function to inject the dependencies that are responsible for creating the user and sending the signup email. Scott Wlaschin has written [an excellent article](https://fsharpforfunandprofit.com/posts/dependency-injection-1/) on this subject. 
 
 * [Composition Root](http://blog.ploeh.dk/2011/07/28/CompositionRoot/)
 
@@ -384,7 +383,7 @@ Email {Username = Username "demystifyfp";
  VerificationCode = VerificationCode "oCzBXDY5wIyGlNFuG76a";} sent
 ```
 
-and in the browser we will get an empty page
+and in the browser, we will get an empty page
 
 ![Signup Success Page Not Found](/img/fsharp/series/fstweet/signup-sucess-not-found.png)
 
@@ -406,17 +405,17 @@ Create a new liquid template in the `views/user` directory
 <div class="container">
   <p class="well"> 
     Hi {{ model }}, Your account has been created. 
-    Check you email to activate your account. 
+    Check your email to activate the account. 
   </p>
 </div>
 {% endblock %}
 ```
 
-This liquid template makes use of view `model` of string to display the user name
+This liquid template makes use of view `model` of type string to display the user name
 
 The next step is adding a route for rendering this template with the actual user name in the `webpart` function. 
 
-As we are now exposing more than one paths in user signup (one for request and another for success), we need to use the `choose` function to define a list of `WebPart`s. 
+As we are now exposing more than one paths in user signup (one for the request and another for the successful signup), we need to use the `choose` function to define a list of `WebPart`s. 
 
 ```fsharp
 // UserSignup.fs
@@ -437,7 +436,7 @@ The [pathScan](https://suave.io/Suave.html#def:val Suave.Filters.pathScan) from 
 
 Here the user name is being matched on the route. Then we partially apply page function with one parameter representing the path of the liquid template. 
 
-Now if run the application, we will get the following page upon receiving a valid user singup request.
+Now if we run the application, we will get the following page upon receiving a valid user signup request.
 
 ![Signup sucess](/img/fsharp/series/fstweet/singup-sucess.png)
 
@@ -445,8 +444,8 @@ That's it :)
 
 ## Summary
 
-In this blog post, we learned how to transform the representation of a domain model to its corresponding view layer represention. 
+In this blog post, we learned how to transform the result representation of a domain functionality to its corresponding view layer representation. 
 
-The separation of concerns enable us to add a new Web RPC API or even replacing Suave with any other library/framework without touching the existing functionality. 
+The separation of concerns enables us to add a new Web RPC API or even replacing Suave with any other library/framework without touching the existing functionality. 
 
-The source code of this blog post is avaliable on [GitHub]()
+The source code of this blog post is available on [GitHub](https://github.com/demystifyfp/FsTweet/tree/v0.7)
