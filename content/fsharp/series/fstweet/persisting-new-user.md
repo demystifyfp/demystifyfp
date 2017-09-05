@@ -1,18 +1,18 @@
 ---
 title: "Persisting New User"
 date: 2017-08-31T06:55:16+05:30
-draft: true
+tags: [chessie, rop, fsharp, SQLProvider]
 ---
 
 Hi!
 
 Welcome back.
 
-We are on track to complete the user signup feature. In this blog post we are going to implement the persistence layer for creating a user which [we faked]({{< relref "transforming-async-result-to-webpart.md#adding-fake-implementations-for-persistence-and-email" >}}) in the last blog post. 
+We are on track to complete the user signup feature. In this blog post, we are going to implement the persistence layer for creating a user which [we faked]({{< relref "transforming-async-result-to-webpart.md#adding-fake-implementations-for-persistence-and-email" >}}) in the last blog post. 
 
 ## Initializing SQLProvider
 
-To takes care of PostgreSQL interactions, we are going to use [SQLProvider](http://fsprojects.github.io/SQLProvider/), a SQL databse type provider. 
+We are going to use [SQLProvider](http://fsprojects.github.io/SQLProvider/), a SQL database type provider, to takes care of PostgreSQL interactions, 
 
 As usual, let's add its NuGet package to our *Web* project using paket
 
@@ -21,9 +21,9 @@ As usual, let's add its NuGet package to our *Web* project using paket
     -p src/FsTweet.Web/FsTweet.Web.fsproj
 ```
 
-Then we need to initilize SQLProvider by providing [the required parameters](http://fsprojects.github.io/SQLProvider/core/postgresql.html). 
+Then we need to initialize SQLProvider by providing [the required parameters](http://fsprojects.github.io/SQLProvider/core/postgresql.html). 
 
-To do it, let's add a seperate fsharp file *Db.fs* in the Web Project
+To do it, let's add a separate fsharp file *Db.fs* in the Web Project
 
 ```bash
 > forge newFs web -n src/FsTweet.Web/Db
@@ -66,11 +66,11 @@ type Db = SqlDataProvider<
             UseOptionTypes=true>
 ```
 
-The type `Db` that represents the PostgreSQL database provided in the `connString` parameter. The `connString` that we are using here is the same one that we used while running the migration script. 
+The type `Db` represents the PostgreSQL database provided in the `connString` parameter. The `connString` that we are using here is the same one that we used while running the migration script. 
 
 Like [DbContext](https://msdn.microsoft.com/en-us/library/system.data.entity.dbcontext(v=vs.113).aspx) in Entity Framework, the SQLProvider offers a `dataContext` type to deal with the database interactions. 
 
-The `dataContext` is specific to the database that we provided in the connection string and this is available as a property of the `Db` type. 
+The `dataContext` is specific to the database that we provided in the connection string, and this is available as a property of the `Db` type. 
 
 As we will be passing this `dataContext` object around, in all our data access functions, we can define a specific type for it to save some key strokes!
 
@@ -83,15 +83,15 @@ type DataContext = Db.dataContext
 
 ## Runtime Configuration of SQLProvider
 
-In the previous section, we configured SQLProvider to enable typed access to the database. Upon initialization, it queries the meta tables of PostgreSQL database and create types. These types can be accessed via `DataContext`
+In the previous section, we configured SQLProvider to enable typed access to the database. Upon initialization, it queries the meta tables of PostgreSQL database and creates types. These types can be accessed via `DataContext`
 
-It's fine for developing an application and compiling it.
+It's okay for developing an application and compiling it.
 
 But when the application goes live, we will be certainly pointing to a separate database! To use a different PostgreSQL database at run time, we need a separate `DataContext` pointing to that database. 
 
-As [suggessted by the Twelve-Factor app](https://12factor.net/config), let's use an environment variable to provide the connection string.
+As [suggested by the Twelve-Factor app](https://12factor.net/config), let's use an environment variable to provide the connection string.
 
-We already using one in our build script, which provides the connection string for the migration script. 
+We are already using one in our build script, which contains the connection string for the migration script. 
 
 ```fsharp
 // build.fsx
@@ -106,7 +106,7 @@ let dbConnection =
 ```
 The `connString` label here takes the value from the environment variable `FSTWEET_DB_CONN_STRING` if it exists otherwise it picks a default one
 
-If we set the value of this `connString` again to `FSTWEET_DB_CONN_STRING` environment variable we are good to go.
+If we set the value of this `connString` again to `FSTWEET_DB_CONN_STRING` environment variable, we are ready to go.
 
 Fake has an environment helper function `setEnvironVar` for this 
 
@@ -117,7 +117,7 @@ setEnvironVar "FSTWEET_DB_CONN_STRING" connString
 // ...
 ```
 
-Now if we run the application using the fake build script, the environment variable `FSTWEET_DB_CONN_STRING` always has a value!
+Now if we run the application using the fake build script, the environment variable `FSTWEET_DB_CONN_STRING` always has value!
 
 The next step is using this environment variable to get a new data context. 
 
@@ -126,19 +126,20 @@ The next step is using this environment variable to get a new data context.
 
 That data context that is being exposed by the SQLProvider uses the [unit of work](https://martinfowler.com/eaaCatalog/unitOfWork.html) pattern underneath. 
 
-So, while using SQLProvider in an application that can be used by mutiple users concurrently, we need to create a new data context for every request from the user that invovles database operation. 
+So, while using SQLProvider in an application that can be used by multiple users concurrently, we need to create a new data context for every request from the user that involves database operation. 
 
 Let's assume that we have a function `getDataContext`, that takes a connection string and returns its associated SQLProvider's data context. There are two ways that we can use this function to create a new data context per request. 
 
 1. For every database layer function, we can pass the connection string and inside that function that we can call the `getDataContext` using the connection string. 
 
-2. An another option would be modifying the `getDataContext` function to return an another function that takes a parameter of type `uint` and returns the data context of the provided connection string. 
+2. An another option would be modifying the `getDataContext` function to return an another function that takes a parameter of type `unit` and returns the data context of the provided connection string. 
 
-We are going to use the second option as its hides the details of getting a underlying data context. 
+We are going to use the second option as its hides the details of getting an underlying data context. 
 
 Let's see it in action to understand it better
 
-As a first step, define a type that represent the factory function to create a data context.
+As a first step, define a type that represents the factory function to create a data context.
+
 ```fsharp
 // src/FsTweet.Web/Db.fs
 // ...
@@ -174,7 +175,7 @@ The next step is passing the `GetDataContext` function to the request handlers w
 
 ### Async Transaction in Mono
 
-At the time of this writing SQLProvider [doesn't support](https://github.com/fsprojects/SQLProvider/blob/1.1.6/src/SQLProvider/SqlRuntime.Transactions.fs#L56-L59) transactions in Mono as the `TransactionScopeAsyncFlowOption` is [not implemented](https://github.com/mono/mono/blob/mono-5.4.0.167/mcs/class/System.Transactions/System.Transactions/TransactionScope.cs#L105-L123) in Mono. 
+At the time of this writing, SQLProvider [doesn't support](https://github.com/fsprojects/SQLProvider/blob/1.1.6/src/SQLProvider/SqlRuntime.Transactions.fs#L56-L59) transactions in Mono as the `TransactionScopeAsyncFlowOption` is [not implemented](https://github.com/mono/mono/blob/mono-5.4.0.167/mcs/class/System.Transactions/System.Transactions/TransactionScope.cs#L105-L123) in Mono. 
 
 So, if we use the datacontext from the above factory function in mono, we may get some errors associated with transaction when we asynchronously write any data to the database
 
@@ -198,11 +199,11 @@ let dataContext (connString : string) : GetDataContext =
 
 > Note: This is *NOT RECOMMENDED* in production. 
 
-With this we are done with the runtime configuration of SQLProvider
+With this, we are done with the runtime configuration of SQLProvider
 
 ## Implementing Create User Function
 
-In the existing fake implementation of the `createUser` add `getDataCtx` as its first paramter and get the data context inside the function.
+In the existing fake implementation of the `createUser` add `getDataCtx` as its first parameter and get the data context inside the function.
 
 ```fsharp
 // src/FsTweet.Web/UserSignup.fs
@@ -216,7 +217,7 @@ module Persistence =
   }
 ```
 
-We need to explicity specify the type of the parameter `GetDataContext` to use the types provided by the SQLProvider.
+We need to explicitly specify the type of the parameter `GetDataContext` to use the types provided by the SQLProvider.
 
 The next step is creating a new user from the `createUserReq`
 
@@ -250,7 +251,7 @@ Though it appears like that we have completed the functionality, one important t
 
 That is Error Handling!
 
-let's examine the return type of `SubmitUpdatesAsync` method, `Async<unit>`. In case of an error while submitting the changes to the database, this method will throw an exception. It also applies to unique violation errors in the `Username` and `Email` columns in the `Users` table. That's not what we want! 
+Let's examine the return type of `SubmitUpdatesAsync` method, `Async<unit>`. In case of an error, while submitting the changes to the database, this method will throw an exception. It also applies to unique violation errors in the `Username` and `Email` columns in the `Users` table. That's not what we want! 
 
 We want a value of type `CreateUserError` to represent the errors!
 
@@ -270,7 +271,7 @@ let submitChanges (ctx : DataContext) =
   // TODO
 ```
 
-Then call the `SubmitUpdatesAsync` method and use [Async.Catch](https://msdn.microsoft.com/en-us/visualfsharpdocs/conceptual/async.catch%5B't%5D-method-%5Bfsharp%5D) function from the `Async` standard which catches the exception thrown during the asynchronous operation and return the result of the operation as a `Choice` type.
+Then call the `SubmitUpdatesAsync` method and use [Async.Catch](https://msdn.microsoft.com/en-us/visualfsharpdocs/conceptual/async.catch%5B't%5D-method-%5Bfsharp%5D) function from the `Async` standard module which catches the exception thrown during the asynchronous operation and return the result of the operation as a `Choice` type.
 
 ```fsharp
 let submitChanges (ctx : DataContext) = 
@@ -279,7 +280,7 @@ let submitChanges (ctx : DataContext) =
   // TODO
 ```
 
-> The return type of each functions has been added as comments for clarity!
+> The return type of each function has been added as comments for clarity!
 
 The next step is mapping the `Async<Choice<'a, 'b>>` to `Async<Result<'a, 'b>>`
 
@@ -297,7 +298,7 @@ let submitChanges (ctx : DataContext) =
   // TODO
 ```
 
-The final step is tranforming it to `AsyncResult` by using the `AR` union case as we did while [mapping the Failure type of AsyncResult]({{< relref "orchestrating-user-signup.md#mapping-asyncresult-failure-type" >}}).
+The final step is transforming it to `AsyncResult` by using the `AR` union case as we did while [mapping the Failure type of AsyncResult]({{< relref "orchestrating-user-signup.md#mapping-asyncresult-failure-type" >}}).
 
 ```fsharp
 // DataContext -> AsyncResult<unit, System.Exception>
@@ -308,7 +309,7 @@ let submitChanges (ctx : DataContext) =
   |> AR
 ```
 
-Now we have an functional version of `SubmitChangesAsync` method which returns an `AsyncResult`. 
+Now we have a functional version of the `SubmitChangesAsync` method which returns an `AsyncResult`. 
 
 ### Mapping AsyncResult Failure Type
 
@@ -346,13 +347,13 @@ module Persistence =
 
 > We will be handling the unique constraint violation errors later in this blog post.
 
-Great! With this we can wrap up the implementation of the `createUser` function.
+Great! With this, we can wrap up the implementation of the `createUser` function.
 
 ## Passing The Dependency
 
-The new `createUser` takes a first parameter `getDataCtx` of type`GetDataContext`. 
+The new `createUser` function takes a first parameter `getDataCtx` of type `GetDataContext`. 
 
-To make it available, first we need to change the `webPart` function in receive this as a parameter and use it for partially applying it to the `createUser` function
+To make it available, first, we need to change the `webPart` function to receive this as a parameter and use it for partially applying it to the `createUser` function
 
 ```fsharp
 // src/FsTweet.Web/UserSignup.fs
@@ -383,13 +384,13 @@ let main argv =
 
 ## Handling Unique Constraint Violation Errors
 
-In order to handle the unique constraint violation errors gracefully, we need to understand some internals of the database abstraction provided by the SQLProvider. 
+To handle the unique constraint violation errors gracefully, we need to understand some internals of the database abstraction provided by the SQLProvider. 
 
-The SQLProvider internally uses the [Npgsql](http://www.npgsql.org/) library to interact with PostgreSQL. As a matter of fact, through the `ResolutionPath` parameter we provided a path in which the Npgsql library dlls reside. 
+The SQLProvider internally uses the [Npgsql](http://www.npgsql.org/) library to interact with PostgreSQL. As a matter of fact, through the `ResolutionPath` parameter, we provided a path in which the Npgsql DLL resides. 
 
-The `Npgsql` library throws [PostgresException](http://www.npgsql.org/api/Npgsql.PostgresException.html) when the PostgreSQL backend reports errors (e.g. query SQL issues, constraint violations).
+The `Npgsql` library throws [PostgresException](http://www.npgsql.org/api/Npgsql.PostgresException.html) when the PostgreSQL backend reports errors (e.g., query SQL issues, constraint violations).
 
-To infer whether the `PostgresException` has occurred due to the violation of unique constraint, we need to check the `ConstraintName` and the `SqlState` property of this exception. 
+To infer whether the `PostgresException` has occurred due to the violation of the unique constraint, we need to check the `ConstraintName` and the `SqlState` property of this exception. 
 
 For unique constraint violation, the `ConstraintName` property represents the name of the constraint that has been violated and the `SqlState` property, which represents [PostgreSQL error code](https://www.postgresql.org/docs/current/static/errcodes-appendix.html), will have the value `"23505"`.
 
@@ -407,9 +408,9 @@ The first step is adding NuGet package reference of `Npgsql`
     -p src/FsTweet.Web/FsTweet.Web.fsproj
 ```
 
-> At the time of this writing there is [an issue](https://github.com/npgsql/npgsql/issues/1603) with the latest version of Npgsql. So, we are using the version `3.1.10` here. 
+> At the time of this writing, there is [an issue](https://github.com/npgsql/npgsql/issues/1603) with the latest version of Npgsql. So, we are using the version `3.1.10` here. 
 
-Then we need to a reference of `*System.Data*`, as `PostgresException` inherits [DbException](https://msdn.microsoft.com/en-us/library/system.data.common.dbexception(v=vs.110).aspx) from this namespace. 
+Then we need to add a reference to `System.Data`, as `PostgresException`, inherits [DbException](https://msdn.microsoft.com/en-us/library/system.data.common.dbexception(v=vs.110).aspx) from this namespace. 
 
 ```bash
 > forge add reference -n System.Data \
@@ -441,23 +442,23 @@ module Persistence =
     | _ -> Error ex
 ```
 
-We are doing pattern matching over the exception types here. First we check whether the exception is of type `AggregateException`. If it is, then we flatten it to get the innere exception and check whether it is `PostgresException`. 
+We are doing pattern matching over the exception types here. First, we check whether the exception is of type `AggregateException`. If it is, then we flatten it to get the inner exception and check whether it is `PostgresException`. 
 
 In case of `PostgresException`, we do the equality checks on the `ConstraintName` and the `SqlState` properties with the appropriate values and return the corresponding error types. 
 
-For all the type mismatch on the exceptions, we return it as a `Error` case with the actual exception. 
+For all the type mismatch on the exceptions, we return it as an `Error` case with the actual exception. 
 
 ## Refactoring mapException Using Partial Active Patterns
 
-Though we achieved what we want in the `mapException` function, it is bit verbose. The crux is the equality check on the two properties and the rest of the code are just type casting from one type to other. 
+Though we achieved what we want in the `mapException` function, it is a bit verbose. The crux is the equality check on the two properties, and the rest of the code just type casting from one type to other. 
 
 Can we write it better to reflect what we intended to do over here?
 
-Yes, We can!
+Yes, We Can!
 
-The answer is [Parital Active Patterns](https://docs.microsoft.com/en-us/dotnet/fsharp/language-reference/active-patterns#partial-active-patterns). 
+The answer is [Partial Active Patterns](https://docs.microsoft.com/en-us/dotnet/fsharp/language-reference/active-patterns#partial-active-patterns). 
 
-Let's add a parital active pattern, `UniqueViolation`, in the `Database` module which does the pattern matching over the exception types and parameterizes the check on the constraint name.
+Let's add a partial active pattern, `UniqueViolation`, in the `Database` module which does the pattern matching over the exception types and parameterizes the check on the constraint name.
 
 ```fsharp
 // src/FsTweet.Web/Db.fs
@@ -490,14 +491,14 @@ let private mapException (ex : System.Exception) =
   | _ -> Error ex
 ```
 
-More readble isn't it?
+More readable isn't it?
 
 ## Summary
 
-Awesome, We learned so many things in this blog post! 
+Excellent, We learned a lot of things in this blog post!
 
-We started with initializing SQLProvider, then configured it to work with different datase in runtime, and followed it up by creating a function to return a new Data Context for every database operation. 
+We started with initializing SQLProvider, then configured it to work with a different database in runtime, and followed it up by creating a function to return a new Data Context for every database operation. 
 
 Finally, we transformed the return type of SQLProvider to our custom Domain type! 
 
-The source code of this blog post is available on [GitHub](TODO)
+The source code of this blog post is available on [GitHub](https://github.com/demystifyfp/FsTweet/tree/v0.9)
