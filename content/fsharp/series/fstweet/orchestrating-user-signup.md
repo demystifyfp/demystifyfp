@@ -76,6 +76,12 @@ module Domain =
   // ...
   open System.Security.Cryptography
   // ...
+  let base64URLEncoding bytes =
+    let base64String = 
+       System.Convert.ToBase64String bytes
+    base64String.TrimEnd([|'='|])
+      .Replace('+', '-').Replace('/', '_')
+
   type VerificationCode = private VerificationCode of string with
 
     member this.Value =
@@ -90,11 +96,11 @@ module Domain =
       use rngCsp = new RNGCryptoServiceProvider()
       rngCsp.GetBytes(b)
 
-      System.Convert.ToBase64String b
+      base64URLEncoding b
       |> VerificationCode 
 ```
 
-We are making use of [RNGCryptoServiceProvider](https://msdn.microsoft.com/en-us/library/system.security.cryptography.rngcryptoserviceprovider(v=vs.110).aspx) from the .NET standard library to generate the random bytes and convert them to a string using [Base64Encoding](https://msdn.microsoft.com/en-us/library/dhx0d524(v=vs.110).aspx)
+We are making use of [RNGCryptoServiceProvider](https://msdn.microsoft.com/en-us/library/system.security.cryptography.rngcryptoserviceprovider(v=vs.110).aspx) from the .NET standard library to generate the random bytes and convert them to a string using [Base64Encoding](https://msdn.microsoft.com/en-us/library/dhx0d524(v=vs.110).aspx) and making it safer to use in URL as mentioned in [this StackOverflow answer](https://stackoverflow.com/a/26354677). 
 
 
 ## Canonicalizing Username And Email Address

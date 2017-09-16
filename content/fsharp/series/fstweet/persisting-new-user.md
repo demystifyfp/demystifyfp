@@ -472,9 +472,10 @@ let (|UniqueViolation|_|) constraintName (ex : Exception) =
   | :? AggregateException as agEx  ->
     match agEx.Flatten().InnerException with 
     | :? PostgresException as pgEx ->
-      match pgEx.ConstraintName, pgEx.SqlState with
-      | constraintName, "23505" -> Some ()
-      | _ -> None
+      if pgEx.ConstraintName = constraintName && 
+          pgEx.SqlState = "23505" then
+        Some ()
+      else None
     | _ -> None
   | _ -> None
 ```
@@ -501,4 +502,4 @@ We started with initializing SQLProvider, then configured it to work with a diff
 
 Finally, we transformed the return type of SQLProvider to our custom Domain type! 
 
-The source code of this blog post is available on [GitHub](https://github.com/demystifyfp/FsTweet/tree/v0.9)
+The source code of this blog post is available on [GitHub](https://github.com/demystifyfp/FsTweet/tree/v0.8)
