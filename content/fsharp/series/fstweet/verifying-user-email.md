@@ -1,7 +1,7 @@
 ---
 title: "Verifying User Email"
 date: 2017-09-17T13:27:49+05:30
-draft: true
+tags: [suave, chessie, rop, fsharp]
 ---
 
 Hi,
@@ -222,3 +222,166 @@ module Persistence =
 ```
 
 The next step is wiring up this persistence logic with the presentation layer. 
+
+## The Presentation Side of User Verification
+
+We are returning `Username option` when the user verification completed without any errors. If it has a value, We need to show a success page otherwise we can show a not found page.
+
+```fsharp
+// src/FsTweet.Web/UserSignup.fs
+// ...
+module Suave = 
+  // ...
+  
+  // (Username option * 'a) -> WebPart
+  let onVerificationSuccess (username, _ )=
+    match username with
+    | Some (username : Username) ->
+      page "user/verification_success.liquid" username.Value
+    | _ ->
+      page "not_found.liquid" "invalid verification code"
+``` 
+
+> We are using a tuple of type `(Username option * 'a)` as an input parameter here as the Success side of the `Result` type is [a tuple of two values](https://fsprojects.github.io/Chessie/reference/chessie-errorhandling-result-2.html), success and warning. As we are not using warning here, we can ignore. We will be refactoring it in an another blog post. 
+
+Let's add these two liquid template files. 
+
+```html
+<!-- FsTweet.Web/views/user/verification_success.liquid -->
+{% extends "master_page.liquid" %}
+
+{% block head %}
+  <title> Email Verified </title>
+{% endblock %}
+
+{% block content %}
+
+  Hi {{ model }}, Your email address has been verified. 
+  Now you can <a href="/login">login</a>!
+
+{% endblock %}
+```
+
+```html
+<!-- FsTweet.Web/views/not_found.liquid -->
+{% extends "master_page.liquid" %}
+
+{% block head %}
+  <title> Not Found :( </title>
+{% endblock %}
+
+{% block content %}
+  {{model}} 
+{% endblock %}
+```
+
+In case of errors during user verification, we need to log the error in the console and render a generic error page to user
+
+```fsharp
+module Suave = 
+  // ...
+
+  // System.Exception list -> WebPart
+  let onVerificationFailure errs =
+    let ex : System.Exception = List.head errs
+    printfn "%A" ex
+    page "server_error.liquid" "error while verifying email"
+```
+
+> The input paramter `errs` is of type `System.Exception list` as the failure type of `Result` is list of error type and we are using it as a list with single value. 
+
+Then add the liquid template for the showing the server error
+
+```html
+<!-- FsTweet.Web/views/server_error.liquid -->
+{% extends "master_page.liquid" %}
+
+{% block head %}
+  <title> Internal Error :( </title>
+{% endblock %}
+
+{% block content %}
+  {{model}} 
+{% endblock %}
+```
+
+Now we have functions that maps success and failure parts of the `Result` to its corresponding `WebPart`.
+
+The next step is using these two functions to map `AsyncResult<Username option, Exception>` to `Async<WebPart>`
+
+```fsharp
+module Suave = 
+  // ...
+  let handleVerifyUserAsyncResult aResult =
+    aResult // AsyncResult<Username option, Exception>
+    |> Async.ofAsyncResult // Async<Result<Username option, Exception>>
+    |> Async.map 
+      (either onVerificationSuccess onVerificationFailure) // Async<WebPart>
+```
+
+Now the presentation side is ready, the next step is wiring the persistence and the persentation layer. 
+
+
+## Adding Verify Signup Endpoint
+
+As a first step, let's add route and webpart for handling the signup verify request from the user. 
+
+```fsharp
+module Suave =
+  // ...
+  let webPart getDataCtx sendEmail =
+    // ...
+    let verifyUser = Persistence.verifyUser getDataCtx
+    choose [
+      // ...
+      pathScan "/signup/verify/%s" (handleSignupVerify verifyUser)
+    ]
+```
+
+The `handleSignupVerify` is not defined yet, so let's add it above the `webPart` function
+
+```fsharp
+module Suave =
+  // ...
+  let handleSignupVerify 
+    (verifyUser : VerifyUser) verificationCode ctx = async {
+      // TODO
+  }
+```
+
+This function first verifies the user using the `verificationCode`
+
+```fsharp
+let handleSignupVerify ... = async {
+  let verifyUserAsyncResult = verifyUser verificationCode
+  // TODO
+}
+```
+
+Then map the `verifyUserAsyncResult` to the webpart using the `handleVerifyUserAsyncResult` function we just defined
+
+```fsharp
+let handleSignupVerify ... = async {
+  let verifyUserAsyncResult = verifyUser verificationCode
+  let! webpart = handleVerifyUserAsyncResult verifyUserAsyncResult
+  // TODO
+}
+```
+
+And finally call the webpart function
+
+```fsharp
+let handleSignupVerify ... = async {
+  let verifyUserAsyncResult = verifyUser verificationCode
+  let! webpart = handleVerifyUserAsyncResult verifyUserAsyncResult
+  return! webpart ctx
+}
+```
+
+## Summary
+
+With this blog post, we have completed the user signup workflow. 
+
+I hope you find it useful and learned how to put the pieces together to build fully functional feature in a robust way. 
+
+The source code of this part can be found on [GitHub](https://github.com/demystifyfp/FsTweet/tree/v0.10)
