@@ -8,7 +8,7 @@ Hi,
 
 In the previous blog post, we added support for [sending verification email]({{< relref "sending-verification-email.md" >}}) using [Postmark](https://postmarkapp.com/). 
 
-In this blog post, we are going to wrap up the user signup workflow by implementing the backend logic of the user verifcation link in the email. 
+In this blog post, we are going to wrap up the user signup workflow by implementing the backend logic of the user verifcation link that we sent in the email. 
 
 
 ## A Type For The Verify User Function.
@@ -19,7 +19,7 @@ Let's get started by defining a type for the function which verifies the user.
 type VerifyUser = string -> AsyncResult<Username option, System.Exception>
 ``` 
 
-It takes a verifcation code of type `string` and asynchronously returns either `Username option` or an exception if there are any fatal errors while verifying the user. 
+It takes a verification code of type `string` and asynchronously returns either `Username option` or an exception if there are any fatal errors while verifying the user. 
 
 The `Username option` type will have the value if the verification code matches otherwise it would be `None`. 
 
@@ -39,9 +39,9 @@ module Persistence =
   } 
 ```
 
-The first parameter `getDataCtx` represents the factory function to get the SQLProvider's datacontext that [we implemented]({{< relref "persisting-new-user.md#datacontext-one-per-request" >}}) while persisting a new user. Upon partially applying this parameter alone will return a function of type `VerifyUser`
+The first parameter `getDataCtx` represents the factory function to get the SQLProvider's datacontext that [we implemented]({{< relref "persisting-new-user.md#datacontext-one-per-request" >}}) while persisting a new user. When we partially applying this argument alone, we will get a function of type `VerifyUser`
 
-As a first step, we need to query the users table to get the user associated with the verification code provided. 
+We first need to query the `Users` table to get the user associated with the verification code provided. 
 
 ```fsharp
 let verifyUser 
@@ -77,7 +77,7 @@ let verifyUser ... = asyncTrial {
 
 Now `userToVerify` will be of type `Async<DataContext.public.UsersEntity option>`. 
 
-Like `SubmitUpdatesAsync` function, the `tryHeadAsync` throws exceptions if there is any error during the execution of the query. So, we need to catch the exception and return it as an `AsyncResult`.
+Like `SubmitUpdatesAsync` function, the `tryHeadAsync` throws exceptions if there is an error during the execution of the query. So, we need to catch the exception and return it as an `AsyncResult`.
 
 Let's add a new function in the `Database` module to do this
 
@@ -91,7 +91,7 @@ let toAsyncResult queryable =
   |> AR // AsyncResult<'a, Exception>
 ```
 
-This implementation to very similar to what we did in the implementaion of the [submitUpdates]({{< relref "persisting-new-user.md#async-exception-to-async-result" >}})
+This implementation to very similar to what we did in the implementation of the [submitUpdates]({{< relref "persisting-new-user.md#async-exception-to-async-result" >}}) function.
 
 
 Now, with the help of this `toAsyncResult` function, we can now do the exception handling in the `verifyUser` function.
@@ -139,21 +139,21 @@ let verifyUser ... = asyncTrial {
 }
 ```
 
-The last step is returning the username of the User to let the caller of the `verifyUser` function to know that the user has been verified and greet the user with the username. 
+The last step is returning the username of the User to let the caller of the `verifyUser` function know that the user has been verified and greet the user with the username. 
 
-We already have a domain type `Username` to represent the username. But the type of the username that we retrieved from the database is `string`. 
+We already have a domain type `Username` to represent the username. But the type of the username that we retrieved from the database is a `string`. 
 
 So, We need to convert it from `string` to `Username`. To do it we defined a static function on the `Username` type, `TryCreate`, which takes a `string` and returns `Result<Username, string>`. 
 
-We could use this function here but let's ponder over the scenario. 
+We could use this function here but before committing, let's ponder over the scenario. 
 
-While creating the user we used the `TryCreate` function to validate and create the corresponding `Username` type. In case of any validation errors we populated the `Failure` part of the `Result` type with the appropriate error message of type `string`. 
+While creating the user we used the `TryCreate` function to validate and create the corresponding `Username` type. In case of any validation errors, we populated the `Failure` part of the `Result` type with the appropriate error message of type `string`. 
 
-Now, when we read the user from the database, ideally there shouldn't be any validation errors. But we can't gurentee this behaviour as the underlying the database table can be accessed and modified without using our validation pipeline. 
+Now, when we read the user from the database, ideally there shouldn't be any validation errors. But we can't guarantee this behavior as the underlying the database table can be accessed and modified without using our validation pipeline. 
 
 In case, if the validation fails, it should be treated as a fatal error! 
 
-> We may not need this level of robustness but the objective here is to domenstrate how to build a strong system using F#. 
+> We may not need this level of robustness, but the objective here is to demonstrate how to build a robust system using F#. 
 
 So, the function that we need has to have the following signature 
 
@@ -174,9 +174,9 @@ string -> Result<Username, string>
 string -> AsyncResult<Username, Exception> 
 ```
 
-we can get a clue that the we just need to map the failure type to `Exception` from `string` and lift `Result` to `AsyncResult`. 
+we can get a clue that we just need to map the failure type to `Exception` from `string` and lift `Result` to `AsyncResult`. 
 
-We already have a function called `mapFailure` to map the failure type but it is defined after the definition of `Username`. To use it, we first move it before the `Username` type definition 
+We already have a function called `mapFailure` to map the failure type, but it is defined after the definition of `Username`. To use it, we first move it before the `Username` type definition. 
 
 ```fsharp
 // src/FsTweet.Web/UserSignup.fs
@@ -288,7 +288,7 @@ module Suave =
     page "server_error.liquid" "error while verifying email"
 ```
 
-> The input paramter `errs` is of type `System.Exception list` as the failure type of `Result` is list of error type and we are using it as a list with single value. 
+> The input parameter `errs` is of type `System.Exception list` as the failure type of `Result` is a list of error type, and we are using it as a list with the single value. 
 
 Then add the liquid template for the showing the server error
 
@@ -305,7 +305,7 @@ Then add the liquid template for the showing the server error
 {% endblock %}
 ```
 
-Now we have functions that maps success and failure parts of the `Result` to its corresponding `WebPart`.
+Now we have functions that map success and failure parts of the `Result` to its corresponding `WebPart`.
 
 The next step is using these two functions to map `AsyncResult<Username option, Exception>` to `Async<WebPart>`
 
@@ -319,12 +319,12 @@ module Suave =
       (either onVerificationSuccess onVerificationFailure) // Async<WebPart>
 ```
 
-Now the presentation side is ready, the next step is wiring the persistence and the persentation layer. 
+Now the presentation side is ready; the next step is wiring the persistence and the presentation layer. 
 
 
 ## Adding Verify Signup Endpoint
 
-As a first step, let's add route and webpart for handling the signup verify request from the user. 
+As a first step, let's add a route and a webpart function for handling the signup verify request from the user. 
 
 ```fsharp
 module Suave =
@@ -382,6 +382,11 @@ let handleSignupVerify ... = async {
 
 With this blog post, we have completed the user signup workflow. 
 
-I hope you find it useful and learned how to put the pieces together to build fully functional feature in a robust way. 
+I hope you found it useful and learned how to put the pieces together to build fully functional feature robustly. 
 
 The source code of this part can be found on [GitHub](https://github.com/demystifyfp/FsTweet/tree/v0.10)
+
+## Exercise
+
+How about sending a welcome email to the user upon successful verification of his/her email?
+
