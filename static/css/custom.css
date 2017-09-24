@@ -16,3 +16,11 @@ pre code {
   font-variant-ligatures: initial;
   font-size: 105%;
 }
+
+.hljs-deletion {
+  color: #b31d28 !important;
+}
+
+.hljs-addition {
+  color: #22863a !important;
+}

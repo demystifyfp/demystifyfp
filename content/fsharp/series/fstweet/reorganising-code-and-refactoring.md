@@ -118,7 +118,7 @@ The overrided version `either` has the same signature but treats the success par
 
 Let's use this in the `Suave` module in the functions that transform `Result<Username option, Exception list>` to `WebPart`.
 
-```fsharp
+```diff
 // FsTweet.Web/UserSignup.fs
 namespace UserSignup
 // ...
@@ -127,13 +127,13 @@ module Sauve =
   open Chessie
   // ...
 
-  // let onVerificationSuccess (username, _ ) = 
-  let onVerificationSuccess username = 
+- let onVerificationSuccess (username, _ ) = 
++ let onVerificationSuccess username = 
     // ...
 
-  // let onVerificationFailure errs =
-  //   let ex : System.Exception = List.head errs
-  let onVerificationFailure (ex : System.Exception) =
+- let onVerificationFailure errs =
+-   let ex : System.Exception = List.head errs
++ let onVerificationFailure (ex : System.Exception) =
     // ...
 
   // ...
@@ -143,29 +143,28 @@ Thanks to the adapter functions, `onSuccess` and `onFailure`, now the function s
 
 Let's do the same thing for the functions that map `Result<UserId, UserSignupError>` to `WebPart`
 
-```fsharp
+```diff
 module Suave = 
   // ...
 
-  //  let handleUserSignupError viewModel errs = 
-  //    match List.head errs with
-  let onUserSignupFailure viewModel err = 
-    match err with
+- let handleUserSignupError viewModel errs = 
+-   match List.head errs with
++ let onUserSignupFailure viewModel err = 
++   match err with
     // ...
 
-  // let handleUserSignupSuccess viewModel _ =
-  let onUserSignupSuccess viewModel _ =
+- let handleUserSignupSuccess viewModel _ =
++ let onUserSignupSuccess viewModel _ =
     // ...
 
   let handleUserSignupResult viewModel result =
-    (*
-      either 
-      (handleUserSignupSuccess viewModel)
-      (handleUserSignupError viewModel) result
-    *)
-    either 
-      (onUserSignupSuccess viewModel)
-      (onUserSignupFailure viewModel) result
+    
+-  either 
+-   (handleUserSignupSuccess viewModel)
+-   (handleUserSignupError viewModel) result
++    either 
++     (onUserSignupSuccess viewModel)
++     (onUserSignupFailure viewModel) result
 
   // ...
 ```
@@ -215,7 +214,7 @@ module AR =
 
 And finally we need to use this moved and renamed function in the `Persistence` and `Email` modules in the *UserSignup.fs* file. 
 
-```fsharp
+```diff
 // FsTweet.Web/UserSignup.fs
 // ...
 module Persistence =
@@ -225,13 +224,13 @@ module Persistence =
 
   let createUser ... = 
     // ...
-    // |> mapAsyncFailure mapException
-    |> AR.mapFailure mapException
+-   |> mapAsyncFailure mapException
++   |> AR.mapFailure mapException
 
   // ...
 ```
 
-```fsharp
+```diff
 // FsTweet.Web/UserSignup.fs
 // ...
 module Email = 
@@ -241,8 +240,8 @@ module Email =
 
   let sendSignupEmail ... =
     // ...
-    // |> mapAsyncFailure Domain.SendEmailError
-    |> AR.mapFailure Domain.SendEmailError
+-   |> mapAsyncFailure Domain.SendEmailError
++   |> AR.mapFailure Domain.SendEmailError
 ```
 
 ## Defining AR.catch function
@@ -303,7 +302,7 @@ let submitUpdates ... =
 
 Finally change the `verifyUser` function to use this function instead of the removed function `toAsyncResult`
 
-```fsharp
+```diff
 // FsTweet.Web/UserSignup.fs
 // ...
 module Persistence =
@@ -313,8 +312,8 @@ module Persistence =
 
   let verifyUser ... = 
     // ...
-    // } |> Seq.tryHeadAsync |> toAsyncResult
-    } |> Seq.tryHeadAsync |> AR.catch
+-   } |> Seq.tryHeadAsync |> toAsyncResult
++   } |> Seq.tryHeadAsync |> AR.catch
     // ...
 
   // ...
