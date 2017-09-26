@@ -171,6 +171,67 @@ module Suave =
 
 > While changing the function signature, we have also changed the prefix `handle` to `on` to keep it consitent with the nomanclature that we are using to the functions that are mapping the success and failure parts of a `Result` type.  
 
+## Pattern Matching On Result type
+
+An another similar piece of code that requires refactoring is pattern matching on the result type. 
+
+Let's have a look at the `handleUserSignup` function
+
+```fsharp
+// FsTweet.Web/UserSignup.fs
+// ...
+module Suave = 
+  // ...
+  let handleUserSignup ... = async {
+    match result with
+    | Ok (userSignupReq, _) ->
+      // ...
+    | Bad msgs ->
+      let viewModel = {vm with Error = Some (List.head msgs)}
+      // ...
+    // ...
+  }
+  // ...
+```
+
+Like the adapter functions, `onSuccess` and `onFailure`, we need adapters while doing the pattern matching on the `Result` type. 
+
+Let's create an [Active Pattern](https://docs.microsoft.com/en-us/dotnet/fsharp/language-reference/active-patterns) to carry out this for us.
+
+```fsharp
+// FsTweet.Web/Chessie.fs
+module Chessie
+// ...
+
+let (|Success|Failure|) result = 
+  match result with
+  | Ok (x,_) -> Success x
+  | Bad errs -> Failure (List.head errs)
+```
+
+With the help of this active pattern, we can now rewrite the `handleUserSignup` function as 
+
+```diff
+// FsTweet.Web/UserSignup.fs
+// ...
+module Suave = 
+  // ...
+  let handleUserSignup ... = async {
+    match result with
+-   | Ok (userSignupReq, _) ->
++   | Success userSignupReq ->
+      // ...
+-   | Bad msgs ->
+-     let viewModel = {vm with Error = Some (List.head msgs)}
++   | Failure msg ->
++     let viewModel = {vm with Error = Some msg}
+      // ...
+    // ...
+  }
+  // ...
+```
+
+Elegant! Let's switch our attention to the `AsyncResult`
 
 ## Revisting the mapAsyncFailure function
 
@@ -335,11 +396,11 @@ PasswordHash
 
 So, let's put these types in a separate module `User` and use it in the `Domain` module of `UserSignup`
 
-Create a new file, *User.fs*, in the web project and move it above `Db.fs` file
+Create a new file, *User.fs*, in the web project and move it above `UserSignup.fs` file
 
 ```bash
 > forge newFs web -n src/FsTweet.Web/User
-> repeat 4 forge moveUp web -n src/FsTweet.Web/User.fs
+> repeat 2 forge moveUp web -n src/FsTweet.Web/User.fs
 ```
 
 Then move the types that we just listed
