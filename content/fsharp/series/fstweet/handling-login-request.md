@@ -1,7 +1,7 @@
 ---
 title: "Handling Login Request"
 date: 2017-09-28T07:37:43+05:30
-draft: true
+tags: [Chessie, rop, fsharp, SQLProvider, suave]
 ---
 
 Hi there!
@@ -14,7 +14,6 @@ The next step is authenticating the user to login to the application. This invol
 2. If the user exists, matching the provided password with the user's corresponding password hash. 
 3. If the password matches, creating a user session (cookie) and redirecting the user to the home page. 
 4. Handling the errors while performing the above three steps. 
-
 
 We are going to implement all the above steps except creating a user session in this blog post. 
 
@@ -234,10 +233,409 @@ module Persistence =
 
   let findUser ... = asyncTrial {
     match userToFind with
-    | None -> return None
+    // ...
     | Some user -> 
       let! user = mapUser user
       return Some user
   }
 ```
 
+## Implementing The Login Function
+
+The next step after finding the user is, verifying his/her password hash with the password provided. 
+
+To do it, we need to have a function in the `PasswordHash` type. 
+
+
+```fsharp
+// FsTweet.Web/User.fs
+// ...
+type PasswordHash = ...
+  // ...
+
+  // Password -> PasswordHash -> bool
+  static member VerifyPassword 
+                  (password : Password) (passwordHash : PasswordHash) =
+    BCrypt.Verify(password.Value, passwordHash.Value)
+
+// ...
+```
+
+The `Verify` function from the *BCrypt* library takes care of verifing the password with the hash and returns `true` if there is a match and `false` otherwise. 
+
+
+Now we have the required functions for implementing the login function and let's start our implementation of the login function by defining a type for it.
+
+```fsharp
+// FsTweet.Web/Auth.fs
+module Domain = 
+  // ...
+  type Login = 
+    FindUser -> LoginRequest -> AsyncResult<User, LoginError>
+```
+
+The `LoginError` type is not defined yet. So, let's define it
+
+```fsharp
+module Domain = 
+  // ...
+  
+  type LoginError =
+  | UsernameNotFound
+  | EmailNotVerified
+  | PasswordMisMatch
+  | Error of System.Exception
+
+  type Login = ...
+```
+
+The `LoginError` discriminated union elegantly represents all the possible errors that may happen while perfoming the login operation. 
+
+The implemention of the `login` function starts with find the user and maps its failure to the `Error` union case if there is any error while finding the user.
+
+```fsharp
+module Domain =
+  // ...
+  open Chessie
+
+  let login (findUser : FindUser) (req : LoginRequest) = asyncTrial {
+    let! userToFind = 
+      findUser req.Username |> AR.mapFailure Error
+    // TODO
+  }
+```
+
+If the user to find didn't exist, we need to return the `UsernameNotFound` error.
+
+```fsharp
+let login ... = asyncTrial {
+  // ...
+  match userToFind with
+  | None -> 
+    return UsernameNotFound
+  // TODO
+}
+```
+
+Though it appears good, there is an error in above implementation. 
+
+The function signature of the login function currently is
+
+```fsharp
+FindUser -> LoginRequest -> AsyncResult<LoginError, LoginError>
+```
+
+Let's focus our attention to the return type `AsyncResult<LoginError, LoginError>`. 
+
+The F# Compiler infers the failure part of the `AsyncResult` as `LoginError` from the expression
+
+```fsharp
+asyncTrial {
+  let! userToFind = 
+    findUser req.Username // AsyncResult<User, Exception>
+    |> AR.mapFailure Error // AsyncResult<User, LoginError>
+}
+```
+
+when we return the `UsernameNotFound` union case, F# Compiler infers it as the success side of the `AsyncResult`.
+
+```fsharp
+asyncTrial {
+  return UsernameNotFound // LoginError
+}
+```
+
+It is because the `return` keyword behind the scenes calls the `Return` function of the `AsyncTrialBuilder` type and this `Return` function populates the success side of the `AsyncResult`. 
+
+> Here is the code snippet of the `Return` function copied from the [Chessie](https://github.com/fsprojects/Chessie/blob/master/src/Chessie/ErrorHandling.fs) library for your reference
+```fsharp
+type AsyncTrialBuilder() = 
+  member __.Return value : AsyncResult<'a, 'b> = 
+    value
+    |> ok
+    |> Async.singleton
+    |> AR
+```
+
+To fix this type mismatch we need to do what the `Return` function does but for the failure side. 
+
+```fsharp
+let login ... = asyncTrial {
+  // ...
+  match userToFind with
+  | None -> 
+    let! result =
+      UsernameNotFound // LoginError
+      |> fail // Result<'a, LoginError>
+      |> Async.singleton // Async<Result<'a, LoginError>>
+      |> AR // AsyncResult<'a, LoginError>
+    return result
+  // TODO
+}
+```
+
+The `let!` expression followed by `return` can replaced with `return!` which does the both.
+
+```fsharp
+let login ... = asyncTrial {
+  // ...
+  match userToFind with
+  | None -> 
+    return! UsernameNotFound 
+      |> fail 
+      |> Async.singleton 
+      |> AR 
+  // TODO
+}
+```
+
+The next thing that we have to do in the login function, checking whether the user's email is verified or not. If it is not verified, we return the `EmailNotVerified` error.
+
+```fsharp
+let login ... = asyncTrial {
+  // ...
+  match userToFind with
+  // ...
+  | Some user ->
+    match user.EmailAddress with
+    | NotVerified _ -> 
+      return! 
+        EmailNotVerified
+        |> fail 
+        |> Async.singleton 
+        |> AR 
+    // TODO
+}
+```
+
+If the user's email address is verified, then we need to verify his/her password and return `PasswordMisMatch` error if there is a mismatch.
+
+```fsharp
+let login ... = asyncTrial {
+  // ...
+  match userToFind with
+  // ...
+  | Some user ->
+    match user.EmailAddress with
+    // ...
+    | Verified _ -> 
+      let isMatchingPassword =
+        PasswordHash.VerifyPassword req.Password user.PasswordHash
+      match isMatchingPassword with
+      | false -> 
+        return! 
+          PasswordMisMatch
+          |> fail 
+          |> Async.singleton 
+          |> AR 
+      // TODO
+}
+```
+
+I am sure you would be thinking about refactoring the following piece of code which is getting repated in all the three places when we return a failure from the `asyncTrial` computation expression.
+
+```fsharp
+|> fail 
+|> Async.singleton 
+|> AR 
+```
+
+To refactor it, let's have a look at the signature of the `fail` function from the *Chessie* library.
+
+```fsharp
+'b -> Result<'a, 'b>
+```
+The three lines of code that was getting repeated to the same transformation but on the `AsyncResult` instead of `Result`
+
+```fsharp
+'b -> AsyncResult<'a, 'b>
+```
+
+So, let's create `fail` function in the `AR` module which implements this logic
+
+```fsharp
+// FsTweet.Web/Chessie.fs
+// ...
+module AR =
+  // ...
+  let fail x =
+    x // 'b
+    |> fail // Result<'a, 'b>
+    |> Async.singleton // Async<Result<'a, 'b>>
+    |> AR // AsyncResult<'a, 'b>
+```
+
+With the help of this new function we can simplify the `login` function as below
+
+```diff
+
+- return! 
+-   UsernameNotFound 
+-   |> fail 
+-   |> Async.singleton 
+-   |> AR 
++ return! AR.fail UsernameNotFound
+...
+-   return! 
+-     EmailNotVerified 
+-     |> fail 
+-     |> Async.singleton 
+-     |> AR 
++   return! AR.fail EmailNotVerified
+...
+-    return! 
+-      PasswordMisMatch
+-      |> fail 
+-      |> Async.singleton 
+-      |> AR 
++    return! AR.fail PasswordMisMatch 
+```
+
+Coming back to the `login` function, if the password does match, we just need to return the `User`. 
+
+```fsharp
+let login ... = asyncTrial {
+  // ...
+  match userToFind with
+  // ...
+  | Some user ->
+    match user.EmailAddress with
+    // ...
+    | Verified _ -> 
+      let isMatchingPassword = ...
+      match isMatchingPassword with
+      // ...
+      | true -> return User
+}
+```
+
+The presentation layer can take this value of `User` type being returned and send it to the end user either as a [HTTP Cookie](https://en.wikipedia.org/wiki/HTTP_cookie) or a [JWT](https://en.wikipedia.org/wiki/JSON_Web_Token). 
+
+
+## The Presentation Layer For Transforming Login Response
+
+If there is any error while doing login, we need to populate the login view model with the corressponding error message and rerender the login page.
+
+```fsharp
+// FsTweet.Web/Auth.fs
+// ...
+module Suave =
+  // ...
+  
+  // LoginViewModel -> LoginError -> WebPart
+  let onLoginFailure viewModel loginError =
+    match loginError with
+    | PasswordMisMatch ->
+       let vm = 
+        {viewModel with Error = Some "password didn't match"}
+       renderLoginPage vm
+    | EmailNotVerified -> 
+       let vm = 
+        {viewModel with Error = Some "email not verified"}
+       renderLoginPage vm
+    | UsernameNotFound -> 
+       let vm = 
+        {viewModel with Error = Some "invalid username"}
+       renderLoginPage vm
+    | Error ex -> 
+      printfn "%A" ex
+      let vm = 
+        {viewModel with Error = Some "something went wrong"}
+      renderLoginPage vm
+  // ...
+```
+
+In case of login success, we return the username as a response. In the next blog post, we will be revisiting this piece of code. 
+
+```fsharp
+// FsTweet.Web/Auth.fs
+// ...
+module Suave =
+  // ...
+  open User
+  // ...
+  // User -> WebPart
+  let onLoginSuccess (user : User) = 
+    Successful.OK user.Username.Value
+  // ...
+```
+
+With the help of these two function, we can transform the `Result<User,LoginError>` to `WebPart` using the either function
+
+```fsharp
+module Suave =
+  // ...
+
+  // LoginViewModel -> Result<User,LoginError> -> WebPart
+  let handleLoginResult viewModel loginResult = 
+    either onLoginSuccess (onLoginFailure viewModel) loginResult
+
+  // ...
+```
+
+The next piece of work is transforming the async version of login result
+
+```fsharp
+module Suave =
+  // ...
+
+  // LoginViewModel -> AsyncResult<User,LoginError> -> Async<WebPart>
+  let handleLoginAsyncResult viewModel aLoginResult = 
+    aLoginResult
+    |> Async.ofAsyncResult
+    |> Async.map (handleLoginResult viewModel)
+```
+
+The final step is wiring the domain, peristence and the presentation layers associated with the login. 
+
+First, pass the `getDataCtx` function from the `main` function to the `webpart` function
+
+```diff
+// FsTweet.Web/FsTweet.Web.fs
+-      Auth.Suave.webpart ()
++      Auth.Suave.webpart getDataCtx
+```
+
+Then in the `webpart` function in the add getDataCtx as its parameter and use it to parially apply in the `findUser` function
+
+```diff
+-  let webpart () =
++  let webpart getDataCtx =
++    let findUser = Persistence.findUser getDataCtx
+```
+
+Followed up with passing the parially applied `findUser` function to the `handlerUserLogin` function and remove the `TODO` placeholder in the `handlerUserLogin` function.
+
+```diff
+-  let handleUserLogin ctx = async {
++  let handleUserLogin findUser ctx = async {
+...
+-        return! Successful.OK "TODO" ctx
+...
+-      POST >=> handleUserLogin
++      POST >=> handleUserLogin findUser
+```
+
+Finally in the `handleUserLogin` function, if the login request is valid, call the `login` function with the provided `findUser` function and the validated login requet and transform the result of the login function with to `WebPart` using the `handleLoginAsyncResult` defined earlier.
+
+```fsharp
+let handleUserLogin findUser ctx = async {
+  // ...
+    let result = ...
+    match result with
+    | Success req -> 
+      let aLoginResult = login findUser req 
+      let! webpart = 
+        handleLoginAsyncResult vm aLoginResult
+      return! webpart ctx
+  // ...
+}
+```
+
+That's it!
+
+## Summary
+
+We covered a lot of ground in this blog post. We started with finding the user by username and then we moved to implement the login function. And finally we transformed the result of the login function to the corresponding webparts. 
+
+The source code of this blog post is available [here](https://github.com/demystifyfp/FsTweet/releases/tag/v0.13).

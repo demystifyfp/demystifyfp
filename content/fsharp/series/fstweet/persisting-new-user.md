@@ -212,8 +212,10 @@ module Persistence =
   // ...
   open Database
 
-  let createUser (getDataCtx : GetDataContext) createUserReq = asyncTrial {
+  let createUser (getDataCtx : GetDataContext) 
+                  (createUserReq : CreateUserRequest) = asyncTrial {
     let ctx = getDataCtx ()
+    // TODO
   }
 ```
 
@@ -234,6 +236,7 @@ let createUser ... = asyncTrail {
   newUser.Username <- createUserReq.Username.Value
   newUser.IsEmailVerified <- false
   newUser.PasswordHash <- createUserReq.PasswordHash.Value
+  // TODO
 }
 ```
 
