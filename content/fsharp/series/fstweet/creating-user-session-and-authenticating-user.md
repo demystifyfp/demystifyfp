@@ -111,6 +111,8 @@ module Suave =
        state.set key value
     | _ -> never
     
+  let userSessionKey = "fsTweetUser"
+
   // User -> WebPart
   let createUserSession (user : User) =
     statefulForSession 
@@ -139,3 +141,133 @@ let onLoginSuccess (user : User) =
     >=> createUserSession user
     >=> Redirection.FOUND "/wall"
 ``` 
+
+## Rending The Wall Page With A Placeholder 
+
+In the previous section, upon successful login, we are redirecting to the wall page (`/wall`). This is currently not exist. So, let's add it with a placeholder and we will revisit in an another blog post. 
+
+Let's get started by creating a new fsharp file *Wall.fs* and move it above *FsTweet.Web.fs*
+
+```bash
+> forge newFs web -n src/FsTweet.Web/Wall
+> forge moveUp web -n src/FsTweet.Web/Wall.fs
+```
+
+Then in the *Wall.fs* file add this initial implementation of User's wall.
+
+```fsharp
+// FsTweet.Web/Wall.fs
+namespace Wall
+
+module Suave =
+  open Suave
+  open Suave.Filters
+  open Suave.Operators
+
+  let renderWall ctx = async {
+    return! Successful.OK "TODO" ctx
+  }
+  
+  let webpart () =
+    path "/wall" >=> renderWall
+```
+
+And finally call this `webpart` function from the `main` function
+
+```fsharp
+// FsTweet.Web/FsTweet.Web.fs
+// ...
+let main argv =
+  // ...
+  let app = 
+    choose [
+      // ...
+      Wall.Suave.webpart ()
+    ]
+  // ...
+```
+
+Now if we run the application and login using a registered account, we will be redirected to the wall page and we can find the cookies for `auth` and `state` in the browser.
+
+![Wall Page With Cookies](/img/fsharp/series/fstweet/wall-page-with-cookies.png)
+
+The values of these cookies are encrypted using a randomly generated key in the server side by Suave. We can either provide this key or let the suave to generate one. 
+
+The downside of letting suave to generate the key is, it will generate a new key whenever the server restarts. And also if we run multiple instances of `FsTweet.Web` behind a load balancer, each instance will have its own server key. 
+
+So, the ideal thing would be explicitly providing the server key.
+
+As mentioned in the *Server Keys* section of the [official documentation](https://suave.io/sessions.html), To generate a key let's create a script file *script.fsx* and add the provided code snippet to generate the key.
+
+```fsharp
+// script.fsx
+#r "./packages/Suave/lib/net40/Suave.dll"
+
+open Suave.Utils
+open System
+
+Crypto.generateKey Crypto.KeyLength
+|> Convert.ToBase64String
+|> printfn "%s"
+```
+
+When we run this script, it will be print a key. 
+
+The next step is passing this a key as an environment variable to the application and configuring the suave web server to use this key
+
+```diff
+// FsTweet.Web/FsTweet.Web.fs
+
+let main argv = 
+  // ...
++  let serverKey = 
++    Environment.GetEnvironmentVariable "FSTWEET_SERVER_KEY"
++    |> ServerKey.fromBase64
++  let serverConfig = 
++    {defaultConfig with serverKey = serverKey}
+
++  startWebServer serverConfig app
+-  startWebServer defaultConfig app
+```
+
+## Protecting WebParts
+
+Currently, the Wall page can be accessed even with out login as we are not protecting it. 
+
+To protect it, we need to do the following things
+
+1. Validate the Auth Token present in the cookie
+2. Deserialize the `User` type from the user state cookie.
+3. Call a WebPart with the deserialized user type only if step one and two are successful
+4. Redirect user to the login page if either step one or two failed. 
+
+For validating the auth token present in the cookie, `Suave.Authentication` module has a function called `authenticate`. 
+
+This `authenticate` function takes five parameters
+
+1. *relativeExpiry* (`CookieLife`) - How long does the authentication cookie last?
+
+2. *secure* (`bool`) - HttpsOnly?
+
+3. *missingCookie* (`unit -> Choice<byte[],WebPart>`) - What to do if authentication cookie is missing?
+
+4. *decryptionFailure* (`SecretBoxDecryptionError -> Choice<byte[],WebPart>`) - What to do if there is any error while decrypting the value present in the cookie?
+
+5. *fSuccess* (`WebPart`) - What to do upon successful verification of authentication cookie?
+
+Let's put this `authenticate` function in action
+
+```fsharp
+// FsTweet.Web/Auth.fs
+module Suave = 
+  // ...
+  let redirectToLoginPage =
+    Redirection.FOUND "/login"
+
+  let authenticateUser fSuccess =
+    authenticate CookieLife.Session false
+      (fun () -> Choice2Of2 redirectToLoginPage)
+      (fun _ -> Choice2Of2 redirectToLoginPage)
+      ??? // TODO
+  // ...
+```
