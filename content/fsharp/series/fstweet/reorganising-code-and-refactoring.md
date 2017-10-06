@@ -6,11 +6,11 @@ tags: [fsharp, refactoring, Chessie]
 
 Hi there!
 
-Welcome to the twelth part of [Creating a Twitter Clone in F# using Suave](TODO) blog post series. 
+Welcome to the twelfth part of [Creating a Twitter Clone in F# using Suave](TODO) blog post series. 
 
-We have came a long way so far and we have lot more things to do! 
+We have come a long way so far, and we have lot more things to do! 
 
-Before we get going, Let's spend some time to reorganise some of the code that we wrote and refactor certain functions to help ourselves to move faster.
+Before we get going, Let's spend some time to reorganize some of the code that we wrote and refactor specific functions to help ourselves to move faster.
 
 The *UserSignup.fs* file has some helper functions for working with the Chessie library. As a first step, we will move them to a separate file.
  
@@ -20,19 +20,19 @@ Let's create a new file `Chessie.fs` in the `web` project.
 > forge newFs web -n src/FsTweet.Web/Chessie
 ```
 
-Then move it above `Db.fs`. In other words move it up four times. 
+Then move it above `Db.fs`. In other words, move it up four times. 
 
 ```bash
 > repeat 4 forge moveUp web -n src/FsTweet.Web/Chessie.fs
 ```
 
-> We are using the in-built command, `repeat`, from [omyzsh](http://ohmyz.sh/) to repeat the `forge moveUp` four times. 
+> We are using the inbuilt command, `repeat`, from [omyzsh](http://ohmyz.sh/) to repeat the `forge moveUp` four times. 
 
 ## Moving mapFailure Function
 
-In the [previous blog post]({{ relref "verifying-user-email.md" }}), while implementing the static member function `TryCreateAsync` in the `Username` type, we moved the `mapFailure` from its previous place to above the `Username` type to use it in the `TryCreateAsync` function.
+In the [previous blog post]({{< relref "verifying-user-email.md" >}}), while implementing the static member function `TryCreateAsync` in the `Username` type, we moved the `mapFailure` from its earlier place to above the `Username` type to use it in the `TryCreateAsync` function.
 
-It is a cue for us to reconsider the placement of the `mapFailure` function, as we may need to move it to somewhere else if we want to use it in an another function.
+It is a cue for us to reconsider the placement of the `mapFailure` function. If we want to use it in an another function, we may need to move it to somewhere else.
 
 So, let's move this function to the `Chessie.fs` file that we just created. 
 
@@ -61,7 +61,7 @@ module Domain =
 
 ## Overriding The either function
 
-We are making use of the `either` function from the chessie library to map the `Result` to `WebPart` with some compromises on the design.
+We are making use of the `either` function from the Chessie library to map the `Result` to `WebPart` with some compromises on the design.
 
 To fix this, let's have a look at the signature of the `either` function
 
@@ -71,11 +71,11 @@ To fix this, let's have a look at the signature of the `either` function
 
 It takes a function to map the success part `('b -> 'c)` and an another function to map the failure part `('d -> 'c)` and returns a function that takes a `Result<'b, 'd>` type and returns `'c`. 
 
-It is the same thing that we needed but the problem is the actual type of `'b` and `'d` 
+It is the same thing that we needed, but the problem is the actual type of `'b` and `'d` 
 
-The success part `'b` has a type `('TSuccess, 'TMessage list)` to represent both the success and the warning part. As we are not making use of warning in FsTweet, instead of this tuple and we just need the success part `'TSuccess` alone. 
+The success part `'b` has a type `('TSuccess, 'TMessage list)` to represent both the success and the warning part. As we are not making use of warnings in FsTweet, instead of this tuple and we just need the success part `'TSuccess` alone. 
 
-To achieve it let's add a `onSuccess` adapter function which maps only the success type
+To achieve it let's add a `onSuccess` adapter function which maps only the success type and drops the warnings list in the tuple.
 
 ```fsharp
 // FsTweet.Web/Chessie.fs
@@ -86,9 +86,9 @@ module Chessie
 let onSuccess f (x, _) = f x
 ```
 
-Then move our attention to the failure part `d` which has a type `'TMessage list` representing the list of errors. In FsTweet, we are short circuiting as soon as we found the first error and we are not capturing all the errors. So, in our case the type `'TMessage list` will always have a list with only one item `'TMessage`.
+Then move our attention to the failure part `d` which has a type `'TMessage list` representing the list of errors. In FsTweet, we are short-circuiting as soon as we found the first error and we are not capturing all the errors. So, in our case, the type `'TMessage list` will always have a list with only one item `'TMessage`.
 
-Like `onSuccess`, we can have a function `onFailure` to map the first item of the list.
+Like `onSuccess`, we can have a function `onFailure` to map the first item of the list alone.
 
 ```fsharp
 module Chessie
@@ -99,7 +99,7 @@ let onFailure f xs =
   xs |> List.head |> f
 ```
 
-The `onFailure` takes the first item from the list and uses it as the argument while calling the map function `f`.
+The `onFailure` function takes the first item from the list and uses it as the argument while calling the map function `f`.
 
 Now with the help of these two functions, `onSuccess` and `onFailure`, we can override the `either` function.
 
@@ -139,9 +139,9 @@ module Sauve =
   // ...
 ```
 
-Thanks to the adapter functions, `onSuccess` and `onFailure`, now the function signatures are clearly expressing our intent without an compromises. 
+Thanks to the adapter functions, `onSuccess` and `onFailure`, now the function signatures are expressing our intent without any compromises. 
 
-Let's do the same thing for the functions that map `Result<UserId, UserSignupError>` to `WebPart`
+Let's do the same thing for the functions that map `Result<UserId, UserSignupError>` to `WebPart`.
 
 ```diff
 module Suave = 
@@ -169,7 +169,7 @@ module Suave =
   // ...
 ```
 
-> While changing the function signature, we have also changed the prefix `handle` to `on` to keep it consitent with the nomanclature that we are using to the functions that are mapping the success and failure parts of a `Result` type.  
+> While changing the function signature, we have also modified the prefix `handle` to `on` to keep it consistent with the nomenclature that we are using to the functions that are mapping the success and failure parts of a `Result` type.  
 
 ## Pattern Matching On Result type
 
@@ -194,7 +194,7 @@ module Suave =
   // ...
 ```
 
-Like the adapter functions, `onSuccess` and `onFailure`, we need adapters while doing the pattern matching on the `Result` type. 
+Like the adapter functions, `onSuccess` and `onFailure`, we need adapters while pattern matching on the `Result` type. 
 
 Let's create an [Active Pattern](https://docs.microsoft.com/en-us/dotnet/fsharp/language-reference/active-patterns) to carry out this for us.
 
@@ -231,9 +231,9 @@ module Suave =
   // ...
 ```
 
-Elegant! Let's switch our attention to the `AsyncResult`
+Elegant! Let's switch our attention to the `AsyncResult`.
 
-## Revisting the mapAsyncFailure function
+## Revisiting the mapAsyncFailure function
 
 Let's begin this change by looking at the signature of the `mapAsyncFailure` function
 
@@ -241,15 +241,15 @@ Let's begin this change by looking at the signature of the `mapAsyncFailure` fun
 ('a -> 'b) -> AsyncResult<'c, 'a> -> AsyncResult<'c, 'b>
 ```
 
-It maps the failure part `'a` to `'b` with the help of the mapping function `('a -> 'b)` of an `AsyncResult`. But the name `mapAsyncFailure` not clearly communicates this. 
+It takes a maping function `('a -> 'b)` and an `AsyncResult` and maps the failure side of the `AsyncResult`. But the name `mapAsyncFailure` not clearly communicates this. 
 
 The better name would be `mapAsyncResultFailure`. 
 
 An another option would be having the function `mapFailure` in the module `AsyncResult` so that the caller will use it as `AsyncResult.mapFailure` 
 
-We can also use an abbreviation `AR` to represent `AsyncResult` and we can call the function as `AR.mapFailure` 
+We can also use an abbreviation `AR` to represent `AsyncResult`, and we can call the function as `AR.mapFailure`. 
 
-Let's choose `AR.mapFailure` as it is shorter. 
+Let's choose `AR.mapFailure` as it is shorter than the other one. 
 
 To enable this, we need to create a new module `AR` and decorate it with the [RequireQualifiedAccess](https://msdn.microsoft.com/en-us/visualfsharpdocs/conceptual/core.requirequalifiedaccessattribute-class-%5Bfsharp%5D) Attribute so that functions inside this module can't be called without the module name. 
 
@@ -273,7 +273,7 @@ module AR =
     |> Async.map (mapFailure f) |> AR
 ```
 
-And finally we need to use this moved and renamed function in the `Persistence` and `Email` modules in the *UserSignup.fs* file. 
+And finally, we need to use this moved and renamed function in the `Persistence` and `Email` modules in the *UserSignup.fs* file. 
 
 ```diff
 // FsTweet.Web/UserSignup.fs
@@ -325,9 +325,9 @@ let toAsyncResult ... =
   |> AR 
 ```
 
-The three lines of code that were repeated, takes an asynchronous computation `Async<'a>` and exceutes it with exception handling using `Async.Catch` function and then map the `Async<Choice<'a, Exception>>` to `AsyncResult<'a, Exception>`. 
+The repeated three lines of code take an asynchronous computation `Async<'a>` and execute it with exception handling using `Async.Catch` function and then map the `Async<Choice<'a, Exception>>` to `AsyncResult<'a, Exception>`. 
 
-In other words we can extract these three lines to a separate function which has the signature
+In other words, we can extract these three lines to a separate function which has the signature
 
 ```fsharp
 Async<'a> -> AsyncResult<'a, Exception>
@@ -361,7 +361,7 @@ let submitUpdates ... =
   |> AR.catch
 ```
 
-Finally change the `verifyUser` function to use this function instead of the removed function `toAsyncResult`
+Finally, change the `verifyUser` function to use this function instead of the removed function `toAsyncResult`
 
 ```diff
 // FsTweet.Web/UserSignup.fs
@@ -380,11 +380,11 @@ module Persistence =
   // ...
 ```
 
-With these we are done with the refactoring and reorganising of the functions associated with the Chessie library.
+With these, we are done with the refactoring and reorganizing of the functions associated with the Chessie library.
 
 ## The User Module
 
-The `Domain` module in the *UserSignup.fs* file has the following types that represents the individual properties of an user in FsTweet
+The `Domain` module in the *UserSignup.fs* file has the following types that represent the individual properties of a user in FsTweet
 
 ```fsharp
 Username
@@ -394,7 +394,7 @@ Password
 PasswordHash 
 ```
 
-So, let's put these types in a separate module `User` and use it in the `Domain` module of `UserSignup`
+So, let's put these types in a separate namespace `User` and use it in the `Domain` module of `UserSignup`.
 
 Create a new file, *User.fs*, in the web project and move it above `UserSignup.fs` file
 
@@ -416,7 +416,7 @@ type Password = ...
 type PasswordHash = ...
 ```
 
-Finally use this module in the *UserSignup.fs* file
+Finally, use this module in the *UserSignup.fs* file
 
 ```fsharp
 // FsTweet.Web/UserSignup.fs
@@ -439,6 +439,6 @@ module Suave =
 
 ## Summary
 
-In this blog post, we learned how to create adapter funtions and override a functionality provided by a library to fit our custom requirements. The key to this refactoring is understanding of the function signatures.
+In this blog post, we learned how to create adapter functions and override a functionality provided by a library to fit our requirements. The key to this refactoring is the understanding of the function signatures.
 
 The source code associated with this blog post is available on [GitHub](https://github.com/demystifyfp/FsTweet/tree/v0.11)
