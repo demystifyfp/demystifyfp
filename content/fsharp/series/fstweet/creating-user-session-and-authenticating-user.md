@@ -1,7 +1,7 @@
 ---
 title: "Creating User Session and Authenticating User"
 date: 2017-10-02T13:48:35+05:30
-draft: true
+tags: [suave, authentication, fsharp]
 ---
 
 Hi!
@@ -120,6 +120,8 @@ module Suave =
 
   // ...
 ```
+
+The `statefulForSession` function, a WebPart from Suave, intializes the `state` in the `HttpContext` with `CookieStateStore`. 
 
 The `setState` function takes a key and a value, along with a `HttpContext`. If there is a state store present in the `HttpContext`, it stores the key and the value pair. In the absense of a state store it does nothing and we are making the `never` WebPart from Suave to denote it. 
 
@@ -264,10 +266,144 @@ module Suave =
   let redirectToLoginPage =
     Redirection.FOUND "/login"
 
-  let authenticateUser fSuccess =
+  let requiresAuth fSuccess =
     authenticate CookieLife.Session false
-      (fun () -> Choice2Of2 redirectToLoginPage)
+      (fun _ -> Choice2Of2 redirectToLoginPage)
       (fun _ -> Choice2Of2 redirectToLoginPage)
       ??? // TODO
   // ...
 ```
+
+For both `missingCookie` and `decryptionFailure`, we are redirecting the user to the login page and for a valid a auth session cookie, we need to give some thoughts. 
+
+We need to retrieve the `User` value that we persisted in the cookie upon successful login and then we have to call the provided `fSuccess`. If there is any error while retrieving the user from cookie, we need to redirect to the login page. 
+
+```fsharp
+module Suave = 
+  // ...
+
+  // HttpContext -> User option
+  let retrieveUser ctx : User option =
+      match HttpContext.state ctx with
+      | Some state -> 
+        state.get userSessionKey
+      | _ -> None
+
+  // WebPart -> (User -> WebPart) -> HttpContext -> WebPart
+  let initUserSession fFailure fSuccess ctx =
+    match retrieveUser ctx with
+    | Some user -> fSuccess user
+    | _ -> fFailure
+
+  // WebPart -> (User -> WebPart) -> WebPart
+  let userSession fFailure fSuccess = 
+    statefulForSession 
+    >=> context (initUserSession fFailure fSuccess)
+
+  // ...
+
+  // (User -> WebPart) -> WebPart
+  let requiresAuth fSuccess =
+    authenticate ...
+      ...
+      (userSession redirectToLoginPage fSuccess)
+
+  // ...
+``` 
+
+In the `userSession` function, we are initializing the user state from the `CookieStateStore` by calling the `statefulForSession` function and then we retrive the logged in user from the state cookie. 
+
+With the help of the `requiresAuth` function, now we can define a WebPart that can be accessed only by the authenticated user. 
+
+Going back to `renderWall` function that we created in *Wall.fs*, we can now make it accesible only for the authenticated user by doing the following changes. 
+
+```diff
+// FsTweet.Web/Wall.fs
+module Suave =
+  // ...
++ open User
++ open Auth.Suave
+
+- let renderWall ctx = async {
++ let renderWall (user : User) ctx = async {
+-   return! Successful.OK "TODO" ctx
++   return! Successful.OK user.Username.Value ctx
++ }
+
+  let webpart () =
+-   path "/wall" >=> renderWall
++   path "/wall" >=> requiresAuth renderWall
+```
+
+Instead of displaying a plain text, `TODO`, we have replaced it with the username of the loggedin user. We will be revisiting this `renderWall` function in the later blog posts. 
+
+## Handling Optional Authentication
+
+Say if the user is already logged in and if he/she visits `/login` page, right now we are rendering the login page and prompting the user to login again. 
+
+But better user experience would be redirecting the user to the wall page. 
+
+To acheive it, let's create new function `mayRequiresAuth`. 
+
+```fsharp
+// FsTweet.Web/Auth.fs
+module Suave = 
+  // ...
+
+  // (User option -> WebPart) -> WebPart
+  let optionalUserSession fSuccess =
+    statefulForSession
+    >=> context (fun ctx -> fSuccess (retrieveUser ctx))
+
+  // (User option -> WebPart) -> WebPart
+  let mayRequiresAuth fSuccess =
+    authenticate CookieLife.Session false
+      (fun _ -> Choice2Of2 (fSuccess None))
+      (fun _ -> Choice2Of2 (fSuccess None))
+      (optionalUserSession fSuccess)
+
+  // ...
+```
+
+The `mayRequiresAuth` function is similar to `requiresAuth` except that it calls the `fSuccess` function with a `User option` type instead of redirecting to login page if the user didn't login. 
+
+The next step is changing the `renderLoginPage` function to accomodate this new requirement.
+
+```diff
+// FsTweet.Web/Auth.fs
+
+module Suave =
+  // ...
+-  let renderLoginPage (viewModel : LoginViewModel) = 
+-    page loginTemplatePath viewModel
++  let renderLoginPage (viewModel : LoginViewModel) hasUserLoggedIn = 
++    match hasUserLoggedIn with
++    | Some _ -> Redirection.FOUND "/wall"
++    | _ -> page loginTemplatePath viewModel
+
+  // ...
+
+   let webpart getDataCtx =
+      let findUser = Persistence.findUser getDataCtx
+      path "/login" >=> choose [
+-       GET >=> renderLoginPage emptyLoginViewModel
++       GET >=> mayRequiresAuth (renderLoginPage emptyLoginViewModel)
+        POST >=> handleUserLogin findUser
+      ]
+```
+
+As we have changed the `renderLoginPage` function to take an extra parameter `hasUserLoggedIn`, we need to add a `None` as the last argument wherever we are calling the  `renderLoginPage` function. 
+
+```diff
+...
+- renderLoginPage vm
++ renderLoginPage vm None
+...
+
+- return! renderLoginPage viewModel ctx
++ return! renderLoginPage viewModel None ctx
+```
+
+## Summary
+
+In this blog post, we learned how to do authentication in Suave and manage state using cookies. The source code associated with this part is available on [GitHub](https://github.com/demystifyfp/FsTweet/tree/v0.14)
