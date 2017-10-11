@@ -2,7 +2,6 @@
   font-family: 'Fira Code';
   src: url("https://cdn.rawgit.com/dunovank/jupyter-themes/1e851888/jupyterthemes/fonts/monospace/firacode/firacode.otf") format("opentype");
 }
-
 pre {
   background-color: white
 }
@@ -12,7 +11,8 @@ h2 {
 }
 
 pre code {
-  font-family: 'Fira Code';
+  /* font-family: 'Fira Code'; */
+  font-family: Consolas;
   font-variant-ligatures: initial;
   font-size: 105%;
 }
