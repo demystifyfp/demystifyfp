@@ -5,7 +5,7 @@
 
 @font-face {
   font-family: 'Consolas';
-  src: url("/fonts/Consolas.ttf") format('truetype');
+  src: url("https://github.com/kakkoyun/linux.files/raw/master/fonts/Consolas.ttf") format('truetype');
 }
 
 pre {
@@ -20,7 +20,7 @@ pre code {
   /* font-family: 'Fira Code';
   font-variant-ligatures: initial; 
   font-size: 105%; */
-  font-family: Consolas;
+  font-family: Consolas, monaco, monospace;
   font-size: 120%;
 }
 
