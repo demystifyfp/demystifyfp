@@ -1,7 +1,6 @@
 ---
 title: "Adding User Feed"
 date: 2017-10-14T08:19:14+05:30
-draft: true
 ---
 
 Hi, 
@@ -208,3 +207,4 @@ let main argv =
 ```
 
 We are getting the required configuration parameters from the respective environment variables. 
+
