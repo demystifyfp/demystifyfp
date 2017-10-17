@@ -2,6 +2,12 @@
   font-family: 'Fira Code';
   src: url("https://cdn.rawgit.com/dunovank/jupyter-themes/1e851888/jupyterthemes/fonts/monospace/firacode/firacode.otf") format("opentype");
 } */
+
+@font-face {
+  font-family: 'Consolas';
+  src: url("/fonts/Consolas.ttf") format('truetype');
+}
+
 pre {
   background-color: white
 }

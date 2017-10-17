@@ -131,10 +131,80 @@ After completing this documentation (roughly take 10-15 minutes), if you navigat
 
 Keep a of note the App Id, Key, and Secret. We will be using it shortly while integrating it. 
 
+Let's create a new file *Stream.fs* in the web project 
 
+```bash
+> forge newFs web -n src/FsTweet.Web/Stream
+```
+
+and move it above *Json.fs*
+
+```bash
+> repeat 7 forge moveUp web -n src/FsTweet.Web/Stream.fs
+```
+
+Then add the [stream-net](https://www.nuget.org/packages/stream-net) nuget package. *stream-net* is a .NET library for building newsfeed and activity stream applications with *Getstream.io*
 
 ```bash
 > forge paket add stream-net -p src/FsTweet.Web/FsTweet.Web.fsproj
-> forge newFs web -n src/FsTweet.Web/Stream
-> repeat 7 forge moveUp web -n src/FsTweet.Web/Stream.fs
 ```
+
+To model the configuration parameters that are required to talk to *GetStream.io*, Let's define a record type `Config`. 
+
+```fsharp
+// FsTweet.Web/Stream.fs
+[<RequireQualifiedAccess>]
+module GetStream
+
+type Config = {
+  ApiSecret : string
+  ApiKey : string
+  AppId : string
+}
+```
+
+We also need a `Client` record type to hold the actual *GetStream.io* client and this config. 
+
+```fsharp
+// FsTweet.Web/Stream.fs
+// ...
+open Stream
+
+type Client = {
+  Config : Config
+  StreamClient : StreamClient
+}
+```
+
+To initialize this `Client` type let's add a constructor function. 
+
+```fsharp
+let newClient config = {
+  StreamClient = 
+    new StreamClient(config.ApiKey, config.ApiSecret)
+  Config = config
+}
+```
+
+The final step is creating a new stream client during the application bootstrap. 
+
+```diff
+// FsTweet.Web/FsTweet.Web.fs
+// ...
+let main argv = 
+   // ...
+
++  let streamConfig : GetStream.Config = {
++      ApiKey = 
++        Environment.GetEnvironmentVariable "FSTWEET_STREAM_KEY"
++      ApiSecret = 
++        Environment.GetEnvironmentVariable "FSTWEET_STREAM_SECRET"
++      AppId = 
++        Environment.GetEnvironmentVariable "FSTWEET_STREAM_APP_ID"
++  }
+
++
++  let getStreamClient = GetStream.newClient streamConfig
+```
+
+We are getting the required configuration parameters from the respective environment variables. 
