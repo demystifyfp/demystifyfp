@@ -9,7 +9,7 @@ cd public && \
 rm -rf -- ^.git && \
 git add -A && \
 git commit -m $1 && \
-git push && \
+git push origin HEAD:master && \
 cd ..
 git add -A && \
 git commit -m $1 && \
