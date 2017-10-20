@@ -646,7 +646,6 @@ Now if we tweet, we can see the wall is being populated with the new tweet.
 
 We made it!!
 
-
 ## Summary
 
 In this blog post we learned how to integrate *GetStream.io* in FsTweet to notify the new tweets and also added the initial version of user wall. 
