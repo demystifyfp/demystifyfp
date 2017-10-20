@@ -8,7 +8,7 @@ Hi,
 
 Welcome back to the seventeeth part of [Creating a Twitter Clone in F# using Suave](TODO) blog post series. 
 
-In the [previous blog post]({{< relref "index.md">}}), we saw to how to persist a new tweet from the user. But after persisting the new tweet, we haven't do anything. In real twitter we have a user feed, which shows a timeline with tweets from him/her and from others whom he/she follows. 
+In the [previous blog post]({{< relref "posting-new-tweet.md">}}), we saw to how to persist a new tweet from the user. But after persisting the new tweet, we haven't do anything. In real twitter we have a user feed, which shows a timeline with tweets from him/her and from others whom he/she follows. 
 
 In this blog post, we are going to address the first part of user's timeline, viewing his/her tweets in the Wall page. 
 
