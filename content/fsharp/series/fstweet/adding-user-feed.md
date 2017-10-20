@@ -1,6 +1,7 @@
 ---
 title: "Adding User Feed"
 date: 2017-10-14T08:19:14+05:30
+tags: [suave, rop, chessie, getstream]
 ---
 
 Hi, 
@@ -645,6 +646,7 @@ Now if we tweet, we can see the wall is being populated with the new tweet.
 ![User Wall V1](/img/fsharp/series/fstweet/user_feed_v1.png)
 
 We made it!!
+
 
 ## Summary
 
