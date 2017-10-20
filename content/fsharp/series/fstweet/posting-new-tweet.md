@@ -604,7 +604,7 @@ module Suave =
 The final piece is passing the dependency `getDataCtx` for the `createTweet` function from the application's main function. 
 
 ```diff
-// FsTweet.Web/Auth.fs
+// FsTweet.Web/FsTweet.Web.fs
 // ...
 -      Wall.Suave.webpart ()
 +      Wall.Suave.webpart getDataCtx

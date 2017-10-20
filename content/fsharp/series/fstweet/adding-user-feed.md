@@ -276,6 +276,9 @@ So, while transforming we need to ignore the `Activity` and map it to `unit` ins
 // ...
 module GetStream = 
   // ...
+  open Chessie.ErrorHandling
+  // ...
+  
   let mapStreamResponse response =
     match response with
     | Choice1Of2 _ -> ok ()
@@ -356,7 +359,7 @@ module Suave =
 +    let publishTweet = publishTweet createPost notifyTweet
 
       choose [		      
-        path "/wall" >=> requiresAuth (renderWall getStreamClient)
+        path "/wall" >=> requiresAuth renderWall 
         POST >=> path "/tweets" 
 -        >=> requiresAuth2 (handleNewTweet createTweet)  		 
 +        >=> requiresAuth2 (handleNewTweet publishTweet)  
@@ -371,3 +374,281 @@ and then pass the `getStreamClient` from the `main` function.
 +      Wall.Suave.webpart getDataCtx getStreamClient
     ]
 ```
+
+Now if you run the app and post a tweet after login, it will be added to the user feed. 
+
+## Subscribing to the User Feed
+
+In the previous section, we have added the implementation for adding a `tweet` activity to the user feed. In the actual twitter, when we post a tweet, it will immediately appear in our timeline. So, let's add this in our FsTweet application.
+
+### Adding GetStream.io JS Library
+
+*GetStream.io* provides a javascript [client library](https://github.com/getstream/stream-js) to enable client side integration in the browser. 
+
+Download the [minified javascript file](https://raw.githubusercontent.com/GetStream/stream-js/master/dist/js_min/getstream.js) and move it to the *src/FsTweet.Web/assets/js/lib* directory.
+
+```bash
+> mkdir src/FsTweet.Web/assets/js/lib
+
+> wget {replace_this_with_actual_URL} \
+    -P src/FsTweet.Web/assets/js/lib
+```
+
+Then in the *wall.liquid* template, add a referece to this *getstream.fs* file in the `scripts` block. 
+
+```html
+<!-- FsTweet.Web/views/user/wall.liquid -->
+<!-- ... -->
+{% block scripts %}
+<script src="/assets/js/lib/getstream.js"> </script>
+<!-- ... -->
+{% endblock %}
+```
+
+### Initializing GetStream.io JS Library
+
+To initialize the `GetStream.io` javascript client, we need *GetStream.io's* API key and App ID. We are already having it on the server side, So, we just need to pass it.  
+
+There are two ways we can do it,
+
+1. Exposing an API to retrieve this details.
+2. Populate the values in a javascript object while rending the wall page using *Dotliquid*. 
+
+We are going to use the later option as it is simpler. To enable it we first need to pass the `getStreamClient` from the `webpart` function to the `renderWall` function. 
+
+```diff
+// FsTweet.Web/Wall.fs
+module Suave =
+
+-  let renderWall (user : User) ctx = async {
++  let renderWall 
++     (getStreamClient : GetStream.Client) 
++     (user : User) ctx = async {
+   ...
+
+   let webpart getDataCtx getStreamClient =
+     ... 
+-    path "/wall" >=> requiresAuth renderWall    
++    path "/wall" >=> requiresAuth (renderWall getStreamClient)    
+```
+
+Then we need to extend the `WallViewModel` to have two more properties and populate it from the `getStreamClient`'s config values. 
+
+
+```fsharp
+type WallViewModel = {
+  // ...
+  ApiKey : string
+  AppId : string
+}
+
+// ...
+let renderWall ... =
+  // ...
+  let vm = {
+    // ...
+    ApiKey = getStreamClient.Config.ApiKey
+    AppId = getStreamClient.Config.AppId}
+  // ...
+```
+
+The next step is a populating a javascript object with these values in the *wall.liquid* template.
+
+```html
+{% block scripts %}
+<!-- ... -->
+<script type="text/javascript">
+  window.fsTweet = {
+    stream : {
+      appId : "{{model.AppId}}",
+      apiKey : "{{model.ApiKey}}"
+    }
+  }  
+</script>
+<!-- ... -->
+{% endblock %}
+```
+
+Finally, in the *wall.js* file, initialize the getstream client with these values. 
+
+```js
+// src/FsTweet.Web/assets/js/wall.js
+$(function(){
+  // ...
+  let client = 
+    stream.connect(fsTweet.stream.apiKey, null, fsTweet.stream.appId);
+});
+```
+
+### Adding User Feed Subscription
+
+To initialize a user feed on the client side, *GetStream.io* requires user id and the user feed token. So, we first need to pass it from the server side. 
+
+As we did for the passing API key and App Id, we first need to extend the view model with the required properties
+
+```fsharp
+// src/FsTweet.Web/Wall.fs
+
+module Suave =
+  // ...
+  type WallViewModel = {
+    // ...
+    UserId : int
+    UserFeedToken : string
+  }
+  // ...
+```
+
+Then populate the view model with the corresponding values
+
+```fsharp
+let renderWall ... =
+  // ...
+  let (UserId userId) = user.UserId
+    
+  let userFeed = 
+    GetStream.userFeed getStreamClient userId
+
+  let vm = {
+    // ...
+      UserId = userId
+      UserFeedToken = userFeed.ReadOnlyToken
+    }
+  // ...
+```
+
+> Note: We are passing the `ReadOnlyToken` as the client side just going to listen to the new tweet. 
+
+Finally, pass the values via *wall.liquid* template.
+
+```html
+{% block scripts %}
+<!-- ... -->
+<script type="text/javascript">
+  window.fsTweet = {
+    user : {
+      id : "{{model.UserId}}",
+      name : "{{model.Username}}",
+      feedToken : "{{model.UserFeedToken}}"
+    },
+    // ...
+  }  
+</script>
+<!-- ... -->
+{% endblock %}
+```
+
+As the last step use these values to intialize the user feed and subscribe to the new tweet and print to the console. 
+
+```js
+// src/FsTweet.Web/assets/js/wall.js
+$(function(){
+  // ...
+  let userFeed = 
+    client.feed("user", fsTweet.user.id, fsTweet.user.feedToken);
+
+  userFeed.subscribe(function(data){
+    console.log(data.new[0])
+  });
+});
+```
+
+Now if you post a tweet, you will get a console log of the new tweet.
+![Console Log of New Tweet](/img/fsharp/series/fstweet/user_tweet_console_log.png)
+
+### Adding User Wall
+
+The last thing that we need to add is rendering the user wall and put the tweets there instead of the console log. To do it, first we need to placeholder in the *wall.liquid* page. 
+
+```html
+<!-- FsTweet.Web/views/user/wall.liquid -->
+<!-- ... -->
+  <div id="wall" />
+<!-- ... -->
+```
+
+Then add a new file *tweet.js* to render the new tweet in the wall. 
+
+```js
+// src/FsTweet.Web/assets/js/tweet.js
+$(function(){
+  
+  var timeAgo = function () {
+    return function(val, render) {
+      return moment(render(val) + "Z").fromNow()
+    };
+  }
+
+  var template = `
+    <div class="tweet_read_view bg-info">
+      <span class="text-muted">
+        @{{tweet.username}} - {{#timeAgo}}{{tweet.time}}{{/timeAgo}}
+      </span>
+      <p>{{tweet.tweet}}</p>
+    </div>
+  `
+
+  window.renderTweet = function($parent, tweet) {
+    var htmlOutput = Mustache.render(template, {
+        "tweet" : tweet,
+        "timeAgo" : timeAgo
+    });
+    $parent.prepend(htmlOutput);
+  };
+
+});
+```
+
+The `renderTweet` function takes the parent DOM element, and the tweet object as its inputs. 
+It generate the html elements of the tweet view using [Mustache](https://mustache.github.io/#demo) and [Moment.js](https://momentjs.com/) (for displaying the time). And then it prepend the generated HTML elements to the parents DOM using the jQuery's [prepend](http://api.jquery.com/prepend/) method. 
+
+In the *wall.liquid* file refer this *tweet.js* file 
+
+```html
+<!-- FsTweet.Web/views/user/wall.liquid -->
+<!-- ... -->
+{% block scripts %}
+<script src="/assets/js/tweet.js"> </script>
+<!-- ... -->
+{% endblock %}
+```
+
+And then refer the Mustache and Moment.js libraries in the *master_page.liquid*. 
+
+```html
+<!-- src/FsTweet.Web/views/master_page.liquid -->
+<div id="scripts">
+  <!-- ... -->
+  <script src="{replace_this_moment_js_CDN_URL}"></script>
+  <script src="{replace_this_mustache_js_CDN_URL}"></script>
+  <!-- ... -->
+</div>
+```
+
+Finally, replace the console log of tweet with the call to the `renderTweet` function. 
+
+
+```diff
+// src/FsTweet.Web/assets/js/wall.js
+  ...
+  
+  userFeed.subscribe(function(data){
+-    console.log(data.new[0]);
++    renderTweet($("#wall"),data.new[0]);
+  });
+
+})  
+```
+
+Now if we tweet, we can see the wall is being populated with the new tweet.
+
+![User Wall V1](/img/fsharp/series/fstweet/user_feed_v1.png)
+
+We made it!
+
+
+## Summary
+
+In this blog post we learned how to integrate *GetStream.io* in FsTweet to notify the new tweets and also added the initial version of user wall. 
+
+The source code of this blog post is available on [GitHub](https://github.com/demystifyfp/FsTweet/tree/v0.16)
