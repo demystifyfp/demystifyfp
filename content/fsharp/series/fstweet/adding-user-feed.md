@@ -644,7 +644,7 @@ Now if we tweet, we can see the wall is being populated with the new tweet.
 
 ![User Wall V1](/img/fsharp/series/fstweet/user_feed_v1.png)
 
-We made it!
+We made it!!
 
 
 ## Summary
