@@ -42,7 +42,7 @@ and render the `user/wall.liquid` template with this view model
   }
 ```
 
-Create a new dotliqud template *wall.liquid* in the *views/user* directly and update it as below
+Create a new dotliqud template *wall.liquid* in the *views/user* directory and update it as below
 
 ```html
 {% extends "master_page.liquid" %}
@@ -79,23 +79,23 @@ Now, if you run the application, you will be able to see the updated wall page a
 
 In both signup and login pages, we are doing full page refresh when the user submitted the form. But on the wall page, doing a complete page refresh while posting a new tweet is not a good user experience.
 
-The better option would be have some javascript code on the wall page, doing an [AJAX](https://developer.mozilla.org/en-US/docs/AJAX/Getting_Started) POST request with a JSON payload when the user clicks the `Tweet` button.
+The better option would be the javascript code on the wall page doing an [AJAX](https://developer.mozilla.org/en-US/docs/AJAX/Getting_Started) POST request with a JSON payload when the user clicks the `Tweet` button.
 
 That means we need to have a corresponding endpoint on the server responding to this request!
 
 ## Revisiting The requiresAuth function
 
-Before creating an HTTP endpoint to handle new tweet, let's have a revisit to our authentication implementation to add support for JSON HTTP endpoints.
+Before creating an HTTP endpoint to handle the new tweet HTTP POST request, let's revisit our authentication implementation to add support for JSON HTTP endpoints.
 
 ```fsharp
 let requiresAuth fSuccess =
-authenticate CookieLife.Session false
-  (fun _ -> Choice2Of2 redirectToLoginPage)
-  (fun _ -> Choice2Of2 redirectToLoginPage)
-  (userSession redirectToLoginPage fSuccess)
+  authenticate CookieLife.Session false
+    (fun _ -> Choice2Of2 redirectToLoginPage)
+    (fun _ -> Choice2Of2 redirectToLoginPage)
+    (userSession redirectToLoginPage fSuccess)
 ```
 
-Currently, we are redirecting the user to login page, if the user didn't have access. But this approach will not work out for AJAX requests, as it doesn't full page refresh. 
+Currently, we are redirecting the user to login page, if the user didn't have access. But this approach will not work out for AJAX requests, as it doesn't do full page refresh. 
 
 What we want is an HTTP response from the server with a status code `401 Unauthorized` and a JSON body. 
 
@@ -129,11 +129,11 @@ let requiresAuth2 fSuccess =
   onAuthenticate fSuccess (RequestErrors.UNAUTHORIZED "???")
 ```
 
-The `RequestErrors.UNAUTHORIZED` function, takes a `string` to populate the request body and return a `WebPart`. To send JSON string as a response body, we need to do few more work!
+The `RequestErrors.UNAUTHORIZED` function from Suave, takes a `string` to populate the request body and return a `WebPart`. To send JSON string as a response body, we need to do few more work!
 
 ### Sending JSON Response
 
-For sending a JSON response, there is no out of the box direct in Suave as the library doesn't want to have a dependency on any other external libraries other than [FSharp.Core](https://www.nuget.org/packages/FSharp.Core).
+For sending a JSON response, there is no out of the box support in Suave as the library doesn't want to have a dependency on any other external libraries other than [FSharp.Core](https://www.nuget.org/packages/FSharp.Core).
 
 However, we can do it with ease with the fundamental HTTP abstractions provided by Suave.
 
@@ -238,7 +238,7 @@ module Suave =
 +    ] 
 ```
 
-The first step in `handleNewTweet` is parsing the incoming JSON body, and the next step is deserializing it to a fsharp record type. *Chiron* library has two functions `Json.tryParse` and `Json.tryDeserialize` to do these two steps respectively. 
+The first step in `handleNewTweet` is parsing the incoming JSON body, and the next step is deserializing it to a fsharp type. *Chiron* library has two functions `Json.tryParse` and `Json.tryDeserialize` to do these two steps respectively. 
 
 Let's add a new function `parse` in *Json.fs* to parse the JSON request body in the `HttpRequest` to Chiron's `Json` type. 
 
@@ -357,7 +357,7 @@ module Suave =
   // ...
 ```
 
-To deserialize the `Json` type that we get after parsing to `PostRequest`, Chiron library requires `PostRequest` type to have a static member function `FromJson` with the signature `PostRequest -> Json<PostRequest>`
+To deserialize the `Json` type *(that we get after parsing)* to `PostRequest`, Chiron library requires `PostRequest` type to have a static member function `FromJson` with the signature `PostRequest -> Json<PostRequest>`
 
 ```fsharp
 module Suave = 
@@ -377,7 +377,7 @@ module Suave =
 We are making use of the `json` computation expression from Chrion library to create `PostRequest` from `Json`. 
 
 
-Then in the `handleNewTweet` function, we can deserialize we `Json` to `PostRequest` using the `Json.tryDeserialize` function from Chiron.
+Then in the `handleNewTweet` function, we can deserialize the `Json` to `PostRequest` using the `Json.tryDeserialize` function from Chiron.
 
 ```fsharp
 let handleNewTweet (user : User) ctx = async {
@@ -395,7 +395,7 @@ The `Json.tryDeserialize` function takes `Json` as its input and return `Choice<
 
 In case of any deserialization error, we are returning it as a bad request using the `JSON.badRequest` function that we created earlier. 
 
-Now we have the server side representation of the `PostRequest`. The next step is validating this new tweet. 
+Now we have the server side representation of a tweet post in form of `PostRequest`. The next step is validating this new tweet post. 
 
 Create a new file *Tweet.fs* in *FsTweet.Web* project and move it above *FsTweet.Web.fs*
 
@@ -404,7 +404,7 @@ Create a new file *Tweet.fs* in *FsTweet.Web* project and move it above *FsTweet
 > repeat 2 forge moveUp web -n src/FsTweet.Web/Tweet.fs
 ```
 
-As we did for [making illegal states unrepresentable]({{< relref "user-signup-validation.md#making-the-illegal-states-unrepresentable">}}) in user signup, let's create a new type `Post`, a domain side representation of a Tweet. 
+As we did for [making illegal states unrepresentable]({{< relref "user-signup-validation.md#making-the-illegal-states-unrepresentable">}}) in user signup, let's create a new type `Post`, a domain model of the tweet post. 
 
 ```fsharp
 // FsTweet.Web/Tweet.fs
@@ -450,9 +450,7 @@ module Suave =
     // ...
 ```
 
-With this, we are having a server-side representation of valid tweet post. 
-
-The next step is persisting it!
+The next step after validation is persisting the new tweet!
 
 
 ## Persisting New Tweet
@@ -814,7 +812,7 @@ HttpRequest -> Result<^a, string>
 
 > Note: We are using `^a` instead of `'a`. i.e., `^a` is a [Statically resolved type parameter](https://docs.microsoft.com/en-us/dotnet/fsharp/language-reference/generics/statically-resolved-type-parameters). We need this as the `Json.tryDeserialize` function requires the `FromJson` static member function constraint on the type `^a`.
 
-Let' name this function `deserialize` and the implementation in *Json.fs*
+Let' name this function `deserialize` and add the implementation in *Json.fs*
 
 ```fsharp
 // FsTweet.Web/Json.fs
