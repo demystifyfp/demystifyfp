@@ -6,13 +6,13 @@ tags: [Chessie, rop, fsharp, SQLProvider, suave]
 
 Hi there!
 
-In the previous blog post we have validated the login request from the user and mapped it to a domain type `LoginRequest`. 
+In the [previous blog post]({{< relref "adding-login.md" >}}), we have validated the login request from the user and mapped it to a domain type `LoginRequest`. The next step is authenticating the user to login to the application. 
 
-The next step is authenticating the user to login to the application. This involves following steps. 
+It involves following steps. 
 
 1. Finding the user with the given username
 2. If the user exists, matching the provided password with the user's corresponding password hash. 
-3. If the password matches, creating a user session (cookie) and redirecting the user to the home page. 
+3. If the password matches, creating a user session (cookie) and redirecting the user to the homepage. 
 4. Handling the errors while performing the above three steps. 
 
 We are going to implement all the above steps except creating a user session in this blog post. 
@@ -36,7 +36,7 @@ type User = {
 }
 ```
 
-The `EmailAddress` of the user, will be either verified or not verified. 
+The `EmailAddress` of the user will be either verified or not verified. 
 
 ```fsharp
 // FsTweet.Web/User.fs
@@ -56,7 +56,7 @@ with member this.Value =
       | Verified e | NotVerified e -> e.Value
 ```
 
-Then add a `EmailAddress` field in the `User` record of this type
+Then add `EmailAddress` field in the `User` record of this type
 
 ```fsharp
 type User = {
@@ -74,7 +74,7 @@ type FindUser =
   Username -> AsyncResult<User option, System.Exception>
 ```
 
-As the user may not exists for a given `Username` we are using `User option`. 
+As the user may not exist for a given `Username`, we are using `User option`. 
 
 Great! Let's define the persistence layer which implements this. 
 
@@ -91,7 +91,7 @@ module Persistence =
   }
 ```
 
-Finding the user by `Username` is very similar to what [we did in](https://github.com/demystifyfp/FsTweet/blob/v0.12/src/FsTweet.Web/UserSignup.fs#L141-L147) the `verifyUser` function. There we found the user by verification code and here we need find by `Username`. So, let's dive in directly.
+Finding the user by `Username` is very similar to what [we did in](https://github.com/demystifyfp/FsTweet/blob/v0.12/src/FsTweet.Web/UserSignup.fs#L141-L147) the `verifyUser` function. There we found the user by verification code, and here we need to find by `Username`. 
 
 ```fsharp
 module Persistence =
@@ -121,7 +121,7 @@ let findUser ... = asyncTrial {
 }
 ```
 
-If the user exists, we need to transform that user that we retireved to its corresponding `User` domain model. In other words we need to define function that has the signature
+If the user exists, we need to transform that user that we retrieved to its corresponding `User` domain model. To do it, we need a function that has the signature
 
 ```fsharp
 DataContext.``public.UsersEntity`` -> AsyncResult<User, System.Exception>
@@ -133,6 +133,7 @@ Let's create this function
 // FsTweet.Web/User.fs
 // ...
 module Persistence =
+  // ...
   let mapUser (user : DataContext.``public.UsersEntity``) = 
     // TODO
   // ...
@@ -158,7 +159,7 @@ module User
     | _ -> fail "Invalid Password Hash"
 ```
 
-The `InterrogateHash` function from the [BCrypt](https://github.com/BcryptNet/bcrypt.net) library, takes a hash and outputs its component parts if it is valid. In case of invalid hash it throws an exception. 
+The `InterrogateHash` function from the [BCrypt](https://github.com/BcryptNet/bcrypt.net) library takes a hash and outputs its components if it is valid. In case of invalid hash, it throws an exception. 
 
 Now, coming back to the `mapUser` that we just started, let's map the username, the password hash, and the email address of the user
 
@@ -177,7 +178,7 @@ module Persistence =
   // ...
 ```
 
-Then we need to check wheather the user email address is verified or not and create the corresponding `UserEmailAddress` type. 
+Then we need to check whether the user email address is verified or not and create the corresponding `UserEmailAddress` type. 
 
 ```fsharp
 let mapUser ... = 
@@ -192,7 +193,7 @@ let mapUser ... =
   // TODO
 ```
 
-Now we have all the individual fields of the `User` record, we can return it from `trial` computation expression
+Now we have all the individual fields of the `User` record; we can return it from `trial` computation expression
 
 ```fsharp
 let mapUser ... = 
@@ -208,7 +209,7 @@ let mapUser ... =
   // TODO
 ```
 
-The `userResult` is of type `Result<User, string>` with the failure (of `string` type) side representing the validation error that may occur while mapping the user representation from the database to the domain model. It also means that data that we retrieved in not consistent and hence we need to treat this failure as Exception. 
+The `userResult` is of type `Result<User, string>` with the failure (of `string` type) side representing the validation error that may occur while mapping the user representation from the database to the domain model. It also means that data that we retrieved is not consistent, and hence we need to treat this failure as Exception. 
 
 ```fsharp
 // DataContext.``public.UsersEntity`` -> AsyncResult<User, System.Exception>
@@ -261,10 +262,12 @@ type PasswordHash = ...
 // ...
 ```
 
-The `Verify` function from the *BCrypt* library takes care of verifing the password with the hash and returns `true` if there is a match and `false` otherwise. 
+The `Verify` function from the *BCrypt* library takes care of verifying the password with the hash and returns `true` if there is a match and `false` otherwise. 
 
 
-Now we have the required functions for implementing the login function and let's start our implementation of the login function by defining a type for it.
+Now we have the required functions for implementing the login function. 
+
+Let's start our implementation of the login function by defining a type for it.
 
 ```fsharp
 // FsTweet.Web/Auth.fs
@@ -289,9 +292,9 @@ module Domain =
   type Login = ...
 ```
 
-The `LoginError` discriminated union elegantly represents all the possible errors that may happen while perfoming the login operation. 
+The `LoginError` discriminated union elegantly represents all the possible errors that may happen while performing the login operation. 
 
-The implemention of the `login` function starts with find the user and maps its failure to the `Error` union case if there is any error while finding the user.
+The implementation of the `login` function starts with finding the user and mapping its failure to the `Error` union case if there is any error.
 
 ```fsharp
 module Domain =
@@ -317,7 +320,7 @@ let login ... = asyncTrial {
 }
 ```
 
-Though it appears good, there is an error in above implementation. 
+Though it appears correct, there is an error in above implementation. 
 
 The function signature of the login function currently is
 
@@ -327,7 +330,7 @@ FindUser -> LoginRequest -> AsyncResult<LoginError, LoginError>
 
 Let's focus our attention to the return type `AsyncResult<LoginError, LoginError>`. 
 
-The F# Compiler infers the failure part of the `AsyncResult` as `LoginError` from the expression
+The F# Compiler infers the failure part of the `AsyncResult` as `LoginError` from the below expression
 
 ```fsharp
 asyncTrial {
@@ -374,7 +377,7 @@ let login ... = asyncTrial {
 }
 ```
 
-The `let!` expression followed by `return` can replaced with `return!` which does the both.
+The `let!` expression followed by `return` can be replaced with `return!` which does the both.
 
 ```fsharp
 let login ... = asyncTrial {
@@ -432,7 +435,7 @@ let login ... = asyncTrial {
 }
 ```
 
-I am sure you would be thinking about refactoring the following piece of code which is getting repated in all the three places when we return a failure from the `asyncTrial` computation expression.
+I am sure you would be thinking about refactoring the following piece of code which is getting repeated in all the three places when we return a failure from the `asyncTrial` computation expression.
 
 ```fsharp
 |> fail 
@@ -445,7 +448,7 @@ To refactor it, let's have a look at the signature of the `fail` function from t
 ```fsharp
 'b -> Result<'a, 'b>
 ```
-The three lines of code that was getting repeated to the same transformation but on the `AsyncResult` instead of `Result`
+The three lines of code that was getting repeated do the same transformation but on the `AsyncResult` instead of `Result`
 
 ```fsharp
 'b -> AsyncResult<'a, 'b>
@@ -465,7 +468,7 @@ module AR =
     |> AR // AsyncResult<'a, 'b>
 ```
 
-With the help of this new function we can simplify the `login` function as below
+With the help of this new function, we can simplify the `login` function as below
 
 ```diff
 
@@ -509,12 +512,12 @@ let login ... = asyncTrial {
 }
 ```
 
-The presentation layer can take this value of `User` type being returned and send it to the end user either as a [HTTP Cookie](https://en.wikipedia.org/wiki/HTTP_cookie) or a [JWT](https://en.wikipedia.org/wiki/JSON_Web_Token). 
+The presentation layer can take this value of `User` type and send it to the end user either as an [HTTP Cookie](https://en.wikipedia.org/wiki/HTTP_cookie) or a [JWT](https://en.wikipedia.org/wiki/JSON_Web_Token). 
 
 
 ## The Presentation Layer For Transforming Login Response
 
-If there is any error while doing login, we need to populate the login view model with the corressponding error message and rerender the login page.
+If there is any error while doing login, we need to populate the login view model with the corresponding error message and rerender the login page.
 
 ```fsharp
 // FsTweet.Web/Auth.fs
@@ -586,7 +589,7 @@ module Suave =
     |> Async.map (handleLoginResult viewModel)
 ```
 
-The final step is wiring the domain, peristence and the presentation layers associated with the login. 
+The final step is wiring the domain, persistence and the presentation layers associated with the login. 
 
 First, pass the `getDataCtx` function from the `main` function to the `webpart` function
 
@@ -596,7 +599,7 @@ First, pass the `getDataCtx` function from the `main` function to the `webpart` 
 +      Auth.Suave.webpart getDataCtx
 ```
 
-Then in the `webpart` function in the add getDataCtx as its parameter and use it to parially apply in the `findUser` function
+Then in the `webpart` function in the add getDataCtx as its parameter and use it to partially apply in the `findUser` function
 
 ```diff
 -  let webpart () =
@@ -604,7 +607,7 @@ Then in the `webpart` function in the add getDataCtx as its parameter and use it
 +    let findUser = Persistence.findUser getDataCtx
 ```
 
-Followed up with passing the parially applied `findUser` function to the `handlerUserLogin` function and remove the `TODO` placeholder in the `handlerUserLogin` function.
+Followed up with passing the partially applied `findUser` function to the `handlerUserLogin` function and remove the `TODO` placeholder in the `handlerUserLogin` function.
 
 ```diff
 -  let handleUserLogin ctx = async {
@@ -616,7 +619,7 @@ Followed up with passing the parially applied `findUser` function to the `handle
 +      POST >=> handleUserLogin findUser
 ```
 
-Finally in the `handleUserLogin` function, if the login request is valid, call the `login` function with the provided `findUser` function and the validated login requet and transform the result of the login function with to `WebPart` using the `handleLoginAsyncResult` defined earlier.
+Finally in the `handleUserLogin` function, if the login request is valid, call the `login` function with the provided `findUser` function and the validated login request and transform the result of the login function with to `WebPart` using the `handleLoginAsyncResult` defined earlier.
 
 ```fsharp
 let handleUserLogin findUser ctx = async {
@@ -636,6 +639,6 @@ That's it!
 
 ## Summary
 
-We covered a lot of ground in this blog post. We started with finding the user by username and then we moved to implement the login function. And finally we transformed the result of the login function to the corresponding webparts. 
+We covered a lot of ground in this blog post. We started with finding the user by username and then we moved to implement the login function. And finally, we transformed the result of the login function to the corresponding webparts. 
 
 The source code of this blog post is available [here](https://github.com/demystifyfp/FsTweet/releases/tag/v0.13).
