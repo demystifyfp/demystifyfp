@@ -8,7 +8,7 @@ Hi!
 
 Welcome back to the thirteenth part of [Creating a Twitter Clone in F# using Suave](TODO) blog post series. 
 
-In this blog post we are going to start the implementation of a new feature, enabling users to login to FsTweet. 
+In this blog post, we are going to start the implementation of a new feature, enabling users to log in to FsTweet. 
 
 Let's get started by creating a new file *Auth.fs* in the `web` project and move it above *FsTweet.Web.fs*
 
@@ -35,7 +35,7 @@ module Suave =
   }
 ```
 
-As we seen in the `UserSignupViewModel`, we need a empty view model while rendering the login page for the first time.
+As we seen in the `UserSignupViewModel`, we need an empty view model while rendering the login page for the first time.
 
 ```fsharp
 module Suave =
@@ -47,7 +47,9 @@ module Suave =
   }
 ```
 
-Then we need to create a liquid template for the login page. Let's create a new file `user/login.liquid` in the *views* directory
+Then we need to create a liquid template for the login page. 
+
+Let's create a new file `user/login.liquid` in the *views* directory
 
 ```html
 <!-- FsTweet.Web/views/user/login.liquid -->
@@ -185,7 +187,7 @@ If the model binding is successful, we need to validate the incoming `LoginViewM
 
 ## Validating the Login Request
 
-The `username` and the `password` fields of the `LoginViewModel` are of types `string`. But what we want to carry out the login operation is their correponding domain models `Username` and `Password`. 
+The `username` and the `password` fields of the `LoginViewModel` are of types `string`. But what we want to carry out the login operation is their corresponding domain models `Username` and `Password`. 
 
 Let's define a new module `Domain` in *Auth.fs* above `Suave` and define a domain type for the login request.
 
@@ -224,7 +226,7 @@ module Domain =
         }
 ```
 
-Then in `handleUserLogin` function, we can make use of this function to validate the `LoginViewModel`. 
+Then in the `handleUserLogin` function, we can make use of this function to validate the `LoginViewModel`. 
 
 ```fsharp
 module Suave =
@@ -249,11 +251,11 @@ The Success and Failure active pattern that [we defined in the previous post]({{
 
 If there is any error, we populate the view model with the error message and rerender the login page. 
 
-For a valid login request, we need to do implement the actual behaviour. Let's leave this as a `TODO` and revisit it in the next blog post.
+For a valid login request, we need to implement the actual behavior. Let's leave this as a `TODO` and revisit it in the next blog post.
 
 
 ## Summary
 
 In this blog post, we added implementations for rending the login page. Then we added functions to handle and validate the login request from the user. 
 
-The source code can be found in the [GitHub repository](https://github.com/demystifyfp/FsTweet/tree/v0.12) 
+The source code is available in the [GitHub repository](https://github.com/demystifyfp/FsTweet/tree/v0.12) 
