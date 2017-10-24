@@ -6,19 +6,17 @@ tags: [suave, rop, chessie, getstream]
 
 Hi, 
 
-Welcome back to the seventeeth part of [Creating a Twitter Clone in F# using Suave](TODO) blog post series. 
+Welcome back to the seventeenth part of [Creating a Twitter Clone in F# using Suave](TODO) blog post series. 
 
-In the [previous blog post]({{< relref "posting-new-tweet.md">}}), we saw to how to persist a new tweet from the user. But after persisting the new tweet, we haven't do anything. In real twitter we have a user feed, which shows a timeline with tweets from him/her and from others whom he/she follows. 
+In the [previous blog post]({{< relref "posting-new-tweet.md">}}), we saw to how to persist a new tweet from the user. But after persisting the tweet, we haven't do anything. In real twitter, we have a user feed, which shows a timeline with tweets from him/her and from others whom he/she follows. 
 
-In this blog post, we are going to address the first part of user's timeline, viewing his/her tweets in the Wall page. 
+In this blog post, we are going to address the first part of user's timeline, viewing his/her tweets on the Wall page. 
 
 ## Publishing a New Tweet
 
 Earlier, we just created a new tweet in the database when the user submitted a tweet. To add support for user feeds and timeline, we need to notify an external system after persisting the new tweet. 
 
-In other words, it's no longer just create tweet, it's create tweet and notify tweet!
-
-As we did for [orachestrating the user signup]({{< relref "orchestrating-user-signup.md#defining-the-signupuser-function-signature">}}), we define a new function which carry out both of the mentioned operations. 
+As we did for [orchestrating the user signup]({{< relref "orchestrating-user-signup.md#defining-the-signupuser-function-signature">}}), we need to define a new function which carries out both of the mentioned operations. 
 
 Let's get started by defining a new type to represent a Tweet!
 
@@ -48,9 +46,9 @@ module Domain =
   type NotifyTweet = Tweet -> AsyncResult<unit, Exception>
 ```
 
-The `NotifyTweet` type typify a notify tweet function that takes `Tweet` and returns either `unit` or `Exception` asynchronously. 
+The `NotifyTweet` typifies a notify tweet function that takes `Tweet` and returns either `unit` or `Exception` asynchronously. 
 
-Then create a new type `PublishTweet` to represent the signature of the orchastration function.
+Then create a new type `PublishTweet` to represent the signature of the orchestration function.
 
 ```fsharp
 module Domain =
@@ -64,7 +62,7 @@ module Domain =
         User -> Post -> AsyncResult<TweetId, PublishTweetError>
 ```
 
-This `PublishTweet` type represents a function that takes two higher order functions, `CreateTweet` to create the tweet in the database and `NotifyTweet` to notify that the user has posted a tweet, the `User` who posts the tweet and the tweet `Post` itself. 
+This `PublishTweet` type represents a function that takes two higher-order functions, `CreateTweet` to create the tweet in the database and `NotifyTweet` to notify that the user has posted a tweet, the `User` who posts the tweet and the tweet `Post` itself. 
 
 It returns either `TweetId` or `PublishTweetError` asynchronously. 
 
@@ -109,17 +107,17 @@ module Domain =
   }
 ```
 
-The `publishTweet` function making use of the abstractions that we built earlier and implement the orchastration. 
+The `publishTweet` function is making use of the abstractions that we built earlier and implements the publish tweet logic. 
 
 > We are mapping the possible failure of each operation to its corresponding union case of the `PublishTweetError` type using the `AR.mapFailure` function that we [defined earlier]({{< relref "reorganising-code-and-refactoring.md#revisiting-the-mapasyncfailure-function" >}}). 
 
-There is no function implementing the `NotifyTweet` type yet in our application and our next step is adding it.
+There is no function implementing the `NotifyTweet` type yet in our application, and our next step is adding it.
 
 ## GetStream.IO
 
-To implement newsfeed and timeline we are going to use [GetStream](https://getstream.io/).
+To implement newsfeed and timeline, we are going to use [GetStream](https://getstream.io/).
 
-The [Stream Framework](https://github.com/tschellenbach/stream-framework/) is a open source solution, which allows you to build scalable news feed, activity streams and notification systems. 
+The [Stream Framework](https://github.com/tschellenbach/stream-framework/) is an open source solution, which allows you to build scalable news feed, activity streams, and notification systems. 
 
 *GetStream.io* is the [SASS](https://en.wikipedia.org/wiki/Software_as_a_service) provider of the stream framework and we are going to use its [free plan](https://getstream.io/pricing/). 
 
@@ -129,7 +127,7 @@ After completing this documentation (roughly take 10-15 minutes), if you navigat
 
 ![Get Stream Dashboard](/img/fsharp/series/fstweet/get_stream_dashbord.png)
 
-Keep a of note the App Id, Key, and Secret. We will be using it shortly while integrating it. 
+Keep an of note the App Id, Key, and Secret. We will be using it shortly while integrating it. 
 
 ## Configuring GetStream.io
 
@@ -145,7 +143,7 @@ and move it above *Json.fs*
 > repeat 7 forge moveUp web -n src/FsTweet.Web/Stream.fs
 ```
 
-Then add the [stream-net](https://www.nuget.org/packages/stream-net) nuget package. *stream-net* is a .NET library for building newsfeed and activity stream applications with *Getstream.io*
+Then add the [stream-net](https://www.nuget.org/packages/stream-net) NuGet package. *stream-net* is a .NET library for building newsfeed and activity stream applications with *Getstream.io*
 
 ```bash
 > forge paket add stream-net -p src/FsTweet.Web/FsTweet.Web.fsproj
@@ -209,17 +207,17 @@ let main argv =
 +  let getStreamClient = GetStream.newClient streamConfig
 ```
 
-We are getting the required configuration parameters from the respective environment variables populated with the corressponding values in the dashboard that we have seen earlier. 
+We are getting the required configuration parameters from the respective environment variables populated with the corresponding values in the dashboard that we have seen earlier. 
 
 ## Notifying New Tweet
 
 Notifying a new tweet using *GetStrem.io* involves two steps. 
 
-1. Retreiving the [user feed](https://getstream.io/get_started/#flat_feed) of the user.
+1. Retreiving the [user feed](https://getstream.io/get_started/#flat_feed).
 
 2. Create [a new activity](https://getstream.io/docs/#adding-activities) of type `tweet` and add it to the user feed. 
 
-To retreive the user feed of the user, let's add a function `userFeed` in 
+To retrieve the user feed of the user, let's add a function `userFeed` in 
 
 ```fsharp
 // FsTweet.Web/Stream.fs
@@ -266,11 +264,11 @@ module GetStream =
 // ...
 ```
 
-The `AddActivity` function in the `Activity` (from the `stream-net` library) returns `Task<Activity>` and we are transforming it to `AsyncResult<Activity,Exception>`. 
+The `AddActivity` function adds an `Activity` to the user feed and returns `Task<Activity>`, and we are transforming it to `AsyncResult<Activity,Exception>`. 
 
-The `NotifyTweet` type that we defined earlier has the function signature returning `AsyncResult<unit,Exception>` but the implemenation function `notifyTweet` returns `AsyncResult<Activity,Exception>`. 
+The `NotifyTweet` type that we defined earlier has the function signature returning `AsyncResult<unit, Exception>` but the implemenation function `notifyTweet` returns `AsyncResult<Activity, Exception>`. 
 
-So, while transforming we need to ignore the `Activity` and map it to `unit` instead. To do it add a new function `mapStreamResponse`
+So, while transforming, we need to ignore the `Activity` and map it to `unit` instead. To do it add a new function `mapStreamResponse`
 
 ```fsharp
 // FsTweet.Web/Wall.fs
@@ -304,11 +302,11 @@ let notifyTweet (getStreamClient: GetStream.Client) (tweet : Tweet) =
    |> AR // AsyncResult<unit,Exception>
 ```
 
-Now we have a implementation for notifying when a user tweets. 
+Now we have an implementation for notifying when a user tweets. 
 
 ## Wiring Up The Presentation Layer
 
-Currently, in the `handleNewTweet` we are justing creating a tweet using the `createTweet` function. To publish the new tweet which does both creating and notifying, we need to change it `publishTweet` and transform its success and failure to `Webpart`.
+Currently, in the `handleNewTweet` function, we are justing creating a tweet using the `createTweet` function. To publish the new tweet which does both creating and notifying, we need to change it to `publishTweet` and then transform its success and failure return values to `Webpart`.
 
 ```diff
 // FsTweet.Web/Wall.fs
@@ -342,9 +340,9 @@ module Suave =
 +          |> AR.either onPublishTweetSuccess onPublishTweetFailure
 ``` 
 
-> For `NotifyTweetError`, we are just printing the error and assumes it as success for simplicity. 
+> For `NotifyTweetError`, we are just printing the error and assumes it as fire and forget. 
 
-The final piece passing the `publishTweet` dependency to the `handleNewTweet`
+The final piece is passing the `publishTweet` dependency to the `handleNewTweet`
 
 ```diff
 // FsTweet.Web/Wall.fs
@@ -380,11 +378,11 @@ Now if you run the app and post a tweet after login, it will be added to the use
 
 ## Subscribing to the User Feed
 
-In the previous section, we have added the implementation for adding a `tweet` activity to the user feed. In the actual twitter, when we post a tweet, it will immediately appear in our timeline. So, let's add this in our FsTweet application.
+In the previous section, we have added the server side implementation for adding a `tweet` activity to the user feed and it's time to add it in the client-side.
 
 ### Adding GetStream.io JS Library
 
-*GetStream.io* provides a javascript [client library](https://github.com/getstream/stream-js) to enable client side integration in the browser. 
+*GetStream.io* provides a javascript [client library](https://github.com/getstream/stream-js) to enable client-side integration in the browser. 
 
 Download the [minified javascript file](https://raw.githubusercontent.com/GetStream/stream-js/master/dist/js_min/getstream.js) and move it to the *src/FsTweet.Web/assets/js/lib* directory.
 
@@ -395,7 +393,7 @@ Download the [minified javascript file](https://raw.githubusercontent.com/GetStr
     -P src/FsTweet.Web/assets/js/lib
 ```
 
-Then in the *wall.liquid* template, add a referece to this *getstream.fs* file in the `scripts` block. 
+Then in the *wall.liquid* template, add a reference to this *getstream.fs* file in the `scripts` block. 
 
 ```html
 <!-- FsTweet.Web/views/user/wall.liquid -->
@@ -408,14 +406,14 @@ Then in the *wall.liquid* template, add a referece to this *getstream.fs* file i
 
 ### Initializing GetStream.io JS Library
 
-To initialize the `GetStream.io` javascript client, we need *GetStream.io's* API key and App ID. We are already having it on the server side, So, we just need to pass it.  
+To initialize the `GetStream.io` javascript client, we need *GetStream.io's* API key and App ID. We are already have it on the server side, So, we just need to pass it.  
 
 There are two ways we can do it,
 
 1. Exposing an API to retrieve this details.
 2. Populate the values in a javascript object while rending the wall page using *Dotliquid*. 
 
-We are going to use the later option as it is simpler. To enable it we first need to pass the `getStreamClient` from the `webpart` function to the `renderWall` function. 
+We are going to use the second option as it is simpler. To enable it we first need to pass the `getStreamClient` from the `webpart` function to the `renderWall` function. 
 
 ```diff
 // FsTweet.Web/Wall.fs
@@ -433,7 +431,7 @@ module Suave =
 +    path "/wall" >=> requiresAuth (renderWall getStreamClient)    
 ```
 
-Then we need to extend the `WallViewModel` to have two more properties and populate it from the `getStreamClient`'s config values. 
+Then we need to extend the `WallViewModel` to have two more properties and populate it with the `getStreamClient`'s config values. 
 
 
 ```fsharp
@@ -483,7 +481,7 @@ $(function(){
 
 ### Adding User Feed Subscription
 
-To initialize a user feed on the client side, *GetStream.io* requires user id and the user feed token. So, we first need to pass it from the server side. 
+To initialize a user feed on the client side, *GetStream.io* requires the user id and the user feed token. So, we first need to pass it from the server side. 
 
 As we did for the passing API key and App Id, we first need to extend the view model with the required properties
 
@@ -539,7 +537,7 @@ Finally, pass the values via *wall.liquid* template.
 {% endblock %}
 ```
 
-As the last step use these values to intialize the user feed and subscribe to the new tweet and print to the console. 
+On the client side, use these values to initialize the user feed and subscribe to the new tweet and print to the console. 
 
 ```js
 // src/FsTweet.Web/assets/js/wall.js
@@ -559,7 +557,7 @@ Now if you post a tweet, you will get a console log of the new tweet.
 
 ### Adding User Wall
 
-The last thing that we need to add is rendering the user wall and put the tweets there instead of the console log. To do it, first we need to placeholder in the *wall.liquid* page. 
+The last thing that we need to add is rendering the user wall and put the tweets there instead of the console log. To do it, first, we need to have a placeholder on the *wall.liquid* page. 
 
 ```html
 <!-- FsTweet.Web/views/user/wall.liquid -->
@@ -600,8 +598,9 @@ $(function(){
 });
 ```
 
-The `renderTweet` function takes the parent DOM element, and the tweet object as its inputs. 
-It generate the html elements of the tweet view using [Mustache](https://mustache.github.io/#demo) and [Moment.js](https://momentjs.com/) (for displaying the time). And then it prepend the generated HTML elements to the parents DOM using the jQuery's [prepend](http://api.jquery.com/prepend/) method. 
+The `renderTweet` function takes the parent DOM element and the tweet object as its inputs. 
+
+It generates the HTML elements of the tweet view using [Mustache](https://mustache.github.io/#demo) and [Moment.js](https://momentjs.com/) (for displaying the time). And then it prepends the created HTML elements to the parents DOM using the jQuery's [prepend](http://api.jquery.com/prepend/) method. 
 
 In the *wall.liquid* file refer this *tweet.js* file 
 
@@ -626,7 +625,7 @@ And then refer the Mustache and Moment.js libraries in the *master_page.liquid*.
 </div>
 ```
 
-Finally, replace the console log of tweet with the call to the `renderTweet` function. 
+Finally, replace the console log with the call to the `renderTweet` function. 
 
 
 ```diff
@@ -650,6 +649,6 @@ We made it!!
 
 ## Summary
 
-In this blog post we learned how to integrate *GetStream.io* in FsTweet to notify the new tweets and also added the initial version of user wall.
+In this blog post, we learned how to integrate *GetStream.io* in FsTweet to notify the new tweets and also added the initial version of user wall.
 
 The source code of this blog post is available on [GitHub](https://github.com/demystifyfp/FsTweet/tree/v0.16)
