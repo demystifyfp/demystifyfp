@@ -1,7 +1,6 @@
 ---
 title: "Adding User Profile Page"
 date: 2017-10-24T20:18:33+05:30
-draft: true
 tags : [suave, DotLiquid, fsharp, chessie, getstream]
 ---
 
@@ -310,9 +309,208 @@ let main argv =
   // ...
 ```
 
+> We need to make sure that this webpart should be the last item in the `choose` list as the path `/%s` matches every path that has this pattern.  
+
 To test drive this new feature, run the application and view the user profile as an anonymous user. Then singup some new users (make sure you verify their email id) and then login and view other users profile. 
 
-We haven't added logout yet. So, to login as a new user either clear cookies in the brower or restart your browser. 
+> We haven't added logout yet. So, to login as a new user either clear the cookies in the brower or restart your browser. 
 
 
 ### Adding User Feed
+
+The next UI Component that we need to implement is the tweet feed of the user. Unlike the user feed that we implement in the pevious post, here we are just going to fetch his/her tweets and going to show as a history. 
+
+To enable it we have to pass the GetStream.io's configuration and user details to the client side. Let's add them as properties in the `UserProfileViewModel`. 
+
+```fsharp
+// src/FsTweet.Web/UserProfile.fs
+// ...
+module Suave =
+  // ...
+  type UserProfileViewModel = {
+    // ...
+    UserId : int
+    UserFeedToken : string
+    ApiKey : string
+    AppId : string
+  }
+  // ...
+``` 
+
+Then add the `getStreamClient` parameter to the `newUserProfileViewModel` function and populate the newly added properties.
+
+```diff
+-  let newUserProfileViewModel (userProfile : UserProfile) = {
+-    Username = userProfile.User.Username.Value
+-    GravatarUrl = userProfile.GravatarUrl
+-    IsLoggedIn = false
+-    IsSelf = userProfile.IsSelf
+-  }
+
++  let newUserProfileViewModel 
++       (getStreamClient : GetStream.Client) (userProfile : UserProfile) = 
++
++    let (UserId userId) = userProfile.User.UserId
++    let userFeed = GetStream.userFeed getStreamClient userId
++    {
++      Username = userProfile.User.Username.Value
++      GravatarUrl = userProfile.GravatarUrl
++      IsLoggedIn = false
++      IsSelf = userProfile.IsSelf
++      UserId = userId
++      UserFeedToken = userFeed.ReadOnlyToken
++      ApiKey = getStreamClient.Config.ApiKey
++      AppId = getStreamClient.Config.AppId
++    }
+```
+
+Now you will be getting compiler errors as the `onHandleUserProfileSuccess` function was directly calling the `newUserProfileViewModel` function and it doesn't have `getStreamClient` to pass the argument. 
+
+
+Instead of passing the value of `GetStream.Client` around, we can partially apply it in the `webpart` function and pass the partially applied `onHandleUserProfileSuccess` function as argument to the `renderUserProfile` function and eventually to the `onHandleUserProfileSuccess` function.
+
+```diff
+-  let webpart (getDataCtx : GetDataContext) = 
++  let webpart  (getDataCtx : GetDataContext) getStreamClient = 
+     ...
+-    let renderUserProfile = renderUserProfile handleUserProfile
++    let newUserProfileViewModel = newUserProfileViewModel getStreamClient
++    let renderUserProfile = renderUserProfile newUserProfileViewModel handleUserProfile
+     ...
+```
+
+```diff
+-  let renderUserProfile handleUserProfile username loggedInUser  ctx = async {
++  let renderUserProfile 
++       newUserProfileViewModel handleUserProfile username loggedInUser  ctx = async {
+
+     match Username.TryCreate username with
+     | Success validatedUsername -> 
+       let isLoggedIn = Option.isSome loggedInUser
+       let onSuccess = 
+-        onHandleUserProfileSuccess isLoggedIn
++        onHandleUserProfileSuccess newUserProfileViewModel isLoggedIn
+```
+
+```diff
+-  let onHandleUserProfileSuccess isLoggedIn userProfileMayBe = 
++  let onHandleUserProfileSuccess newUserProfileViewModel isLoggedIn userProfileMayBe = 
+```
+
+The final step is passing the `getStreamClient` from the application's main function.
+
+```diff
+// FsTweet.Web/FsTweet.Web.fs
+// ...
+let main argv =
+  // ...
+  let app = 
+    choose [
+      // ...
+-     UserProfile.Suave.webPart getDataCtx
++     UserProfile.Suave.webPart getDataCtx getStreamClient
+    ]
+  // ...
+```
+
+With this we are done with the server side changes for showing a user feed in the user profile page. 
+
+The next change that we need to do is on the liquid template *profile.liquid* 
+
+First, add a placeholder for showing the user feed
+
+```html
+<!-- user/profile.liquid -->
+<!-- ... -->
+{% block content %}
+<div>
+  <!-- ... -->
+  <div id="tweets" />
+</div>
+{% endblock %}
+```
+
+Then as we did in the [last blog post]({{< relref "adding-user-feed.md#initializing-getstream-io-js-library" >}}), define a `scripts` block and pass the GetStream.io's initialization values to the client side.
+
+```html
+<!-- user/profile.liquid -->
+<!-- ... -->
+
+{% block scripts %}
+<script src="/assets/js/lib/getstream.js"> </script>
+
+<script type="text/javascript">
+  window.fsTweet = {
+    user : {
+      id : "{{model.UserId}}",
+      name : "{{model.Username}}",
+      feedToken : "{{model.UserFeedToken}}"
+    },
+    stream : {
+      appId : "{{model.AppId}}",
+      apiKey : "{{model.ApiKey}}"
+    }
+  }  
+</script>
+
+<script src="/assets/js/tweet.js"></script>
+<script src="/assets/js/profile.js"></script>
+{% endblock %}
+```
+
+The *profile.js* that we are referring here is not added yet. So, let's add it
+
+```js
+// assets/js/profile.js
+$(function(){
+  let client = 
+    stream.connect(fsTweet.stream.apiKey, null, fsTweet.stream.appId);
+  let userFeed = 
+    client.feed("user", fsTweet.user.id, fsTweet.user.feedToken);
+
+  userFeed.get({
+    limit: 25
+  }).then(function(body) {
+    $(body.results.reverse()).each(function(index, tweet){
+      renderTweet($("#tweets"), tweet);
+    });
+  })
+});
+```
+
+The code is straight-forward, we are initializing the GetStream.io's client and the user feed. And then we are retreving the last 25 tweets of the user.
+
+Awesome!.
+
+Now if we run the app and visits a user profile, we can see his/her tweets!
+
+
+## Adding Logout
+
+Adding the logout functionality in very simple. Thanks to the `deauthenticate` WebPart from the `Suave.Authentication` module which clears both the authentication and the state cookie. 
+
+Post logout we just need to redirect the user to the login page.
+
+```diff
+module Suave =
+   ...
+
+   let webpart getDataCtx =
+     let findUser = Persistence.findUser getDataCtx
+-    path "/login" >=> choose [
+-      GET >=> mayRequiresAuth (renderLoginPage emptyLoginViewModel)
+-      POST >=> handleUserLogin findUser
++    choose [
++      path "/login" >=> choose [
++        GET >=> mayRequiresAuth (renderLoginPage emptyLoginViewModel)
++        POST >=> handleUserLogin findUser
++      ]
++      path "/logout" >=> deauthenticate >=> redirectToLoginPage
+     ]
+```
+
+## Summary 
+
+In this blog post, we implemented the user profile page with the help of the abstractions that we built earlier. Then we added the logout functionality.
+
+The source code associated with this blog post is available on [GitHub](https://github.com/demystifyfp/FsTweet/tree/v0.17)
