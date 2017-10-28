@@ -142,6 +142,8 @@ With this alias in place, we can build and run our application using a single co
 > forge run
 ```
 
+> From here on, the term *run/test drive the application* in the following blog posts implies running this `forge run` command. 
+
 # Summary
 
 In this part, we have learned how to bootstrap a project from scratch and configure it to use Paket and FAKE. 

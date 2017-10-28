@@ -129,6 +129,10 @@ let requiresAuth2 fSuccess =
   onAuthenticate fSuccess (RequestErrors.UNAUTHORIZED "???")
 ```
 
+> There are only two hard things in Computer Science: cache invalidation and naming things. -- Phil Karlton
+
+> To be honest, I'm not in favor of naming this function as `requiresAuth2`. But I couldn't be able to come up a with a better name.  
+
 The `RequestErrors.UNAUTHORIZED` function from Suave, takes a `string` to populate the request body and return a `WebPart`. To send JSON string as a response body, we need to do few more work!
 
 ### Sending JSON Response

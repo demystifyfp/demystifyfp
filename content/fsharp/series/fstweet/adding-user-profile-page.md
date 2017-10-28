@@ -66,7 +66,7 @@ Then update it as below
   <p class="gravatar_name">@{{model.Username}}</p>
   {% if model.IsLoggedIn %}
     {% unless model.IsSelf %}
-      <a href="#" id="follow" data-username="{{model.username}}">Follow</a>
+      <a href="#" id="follow">Follow</a>
     {% endunless %}
     <a href="/logout">Logout</a>
   {% endif %}
@@ -76,7 +76,7 @@ Then update it as below
 
 > Styles are ignored for brevity.
 
-We are using two boolean properties `IsLoggedIn` and `IsSelf` to show/hide the UI elements that we saw above. 
+We are using two boolean properties `IsLoggedIn` and `IsSelf` to show/hide the UI elements that we saw above.  
 
 The next step is adding the server side logic to render this template. 
 
@@ -87,7 +87,7 @@ Create a new fsharp file *UserProfile.fs* and move it above *FsTweet.Web.fs*
 ```bash
 > forge newFs web -n src/FsTweet.Web/UserProfile
 
-> repeat 2 forge moveUp web -n src/FsTweet.Web/UserProfile.fs
+> forge moveUp web -n src/FsTweet.Web/UserProfile.fs
 ```
 
 As a first step, let's define a domain model for user profile 
@@ -483,31 +483,6 @@ The code is straight-forward, we are initializing the GetStream.io's client and 
 Awesome!.
 
 Now if we run the app and visits a user profile, we can see his/her tweets!
-
-
-## Adding Logout
-
-Adding the logout functionality in very simple. Thanks to the `deauthenticate` WebPart from the `Suave.Authentication` module which clears both the authentication and the state cookie. 
-
-Post logout we just need to redirect the user to the login page.
-
-```diff
-module Suave =
-   ...
-
-   let webpart getDataCtx =
-     let findUser = Persistence.findUser getDataCtx
--    path "/login" >=> choose [
--      GET >=> mayRequiresAuth (renderLoginPage emptyLoginViewModel)
--      POST >=> handleUserLogin findUser
-+    choose [
-+      path "/login" >=> choose [
-+        GET >=> mayRequiresAuth (renderLoginPage emptyLoginViewModel)
-+        POST >=> handleUserLogin findUser
-+      ]
-+      path "/logout" >=> deauthenticate >=> redirectToLoginPage
-     ]
-```
 
 ## Summary 
 
