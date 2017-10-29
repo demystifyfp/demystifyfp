@@ -356,10 +356,9 @@ Then update the view model of the Wall page with a new property `TimelineToken` 
 ...
 
    type WallViewModel = {
-+    TimelineToken : string
-      ApiKey : string		      ApiKey : string
-      AppId : string		      AppId : string
-    }		  
+    ...
++   TimelineToken : string
+    ...}		  
 
 ...
 
@@ -368,8 +367,94 @@ Then update the view model of the Wall page with a new property `TimelineToken` 
 +      GetStream.timeLineFeed getStreamClient userId 
 
   let vm = {
+    ...
++   TimelineToken = timeLineFeed.ReadOnlyToken
+    ...}
+```
 
-+      TimelineToken = timeLineFeed.ReadOnlyToken
+To pass this `Timeline` token with the javascript code, add a new property `timelineToken` in the `fsTweet.user` object in the *wall.liquid* template. 
 
+```diff
+<!-- views/user/wall.liquid -->
+
+<script type="text/javascript">
+  window.fsTweet = {
+    user : {
+      ...
++     timelineToken : "{{model.TimelineToken}}"
+    },
+    stream : {...}
   }
 ```
+
+The last step is initializing a timeline feed using this token and subscribe to it. 
+
+```js
+// assets/js/wall.js
+$(function(){
+  // ...
+  let timelineFeed = 
+    client.feed("timeline", fsTweet.user.id, fsTweet.user.timelineToken);
+
+  timelineFeed.subscribe(function(data){
+    renderTweet($("#wall"),data.new[0]);
+  });
+});
+```
+
+This would update the wall page when the timeline feed receives a new tweet. 
+
+To have the wall page with a populate timeline, we need to fetch the tweets from the timeline feed just like what we did for fetching the user's tweet in the user profile page. 
+
+```js
+// assets/js/wall.js
+$(function(){
+  // ...
+  timelineFeed.get({
+    limit: 25
+  }).then(function(body) {
+    $(body.results.reverse()).each(function(index, tweet){
+      renderTweet($("#wall"), tweet);
+    });
+  });
+});
+```
+
+In *GetStream.io*, the timeline feed of a user will not have the user's personal tweets. So, the populated wall page here will not have user's tweet. To show both the user's tweets and his/her timeline tweets, we can fetch the user's tweets as well and merge both the feeds and then sort with time.
+
+To do it, replace the above snippet with the below one
+
+```js
+// assets/js/wall.js
+$(function(){
+  // ...
+  timelineFeed.get({
+    limit: 25
+  }).then(function(body) {
+    var timelineTweets = body.results
+    userFeed.get({
+      limit : 25
+    }).then(function(body){
+      var userTweets = body.results
+      var allTweets = $.merge(timelineTweets, userTweets)
+      allTweets.sort(function(t1, t2){
+        return new Date(t2.time) - new Date(t1.time);
+      })
+      $(allTweets.reverse()).each(function(index, tweet){
+        renderTweet($("#wall"), tweet);
+      });
+    })
+  })
+});
+```
+
+Cool! 
+
+Now run the app, open two browser windows, login as two different users and follow the other user.  
+![User Wall With Live Update](/img/fsharp/series/fstweet/following_a_user.gif)
+
+After following the other user, you can get the live updates. 
+
+![User Wall With Live Update](/img/fsharp/series/fstweet/user_wall_live_update.gif)
+
+We made it!
