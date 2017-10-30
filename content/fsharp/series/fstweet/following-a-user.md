@@ -43,12 +43,12 @@ module Suave =
 
 ## Following A User
 
-Let's get started by creating a new file *Social.fs* in the *FsTweet.Web* project and move it above *FsTweet.Web.fs*
+Let's get started by creating a new file *Social.fs* in the *FsTweet.Web* project and move it above *UserProfile.fs*
 
 ```bash
 > forge newFs web -n src/FsTweet.Web/Social
 
-> forge moveUp web -n src/FsTweet.Web/Social.fs
+> repeat 2 forge moveUp web -n src/FsTweet.Web/Social.fs
 ```
 
 The backend implementation of following a user involves two things. 
@@ -103,6 +103,10 @@ type CreateSocialTable()=
       .WithColumn("FollowerUserId").AsInt32().ForeignKey("Users", "Id").NotNullable()
       .WithColumn("FollowingUserId").AsInt32().ForeignKey("Users", "Id").NotNullable()
     |> ignore
+
+    base.Create.UniqueConstraint("SocialRelationship")
+      .OnTable("Social")
+      .Columns("FollowerUserId", "FollowingUserId") |> ignore
   
   override this.Down() = 
     base.Delete.Table("Tweets") |> ignore
@@ -458,3 +462,209 @@ After following the other user, you can get the live updates.
 ![User Wall With Live Update](/img/fsharp/series/fstweet/user_wall_live_update.gif)
 
 We made it!
+
+## Showing Following In User Profile
+
+Currently, In the user profile page, we are always showing *Follow* button, even if the logged in user already following the given user. 
+
+As we have added support for following a user, while rendering the user profile page, we can now check whether the user is being followed by the logged in user or not and show either the *follow* button or *following* button accordingly. 
+
+To enable this, let's get add a new type `UserProfileType` to represent all the three possible cases while serving the user profile page.
+
+```fsharp
+// src/FsTweet.Web/UserProfile.fs
+// ...
+type UserProfileType =
+| Self
+| OtherNotFollowing
+| OtherFollowing
+
+// ...
+```
+
+Then we need to use this type in the place of the `IsSelf` property. 
+
+```diff
+type UserProfile = {
+   User : User
+   GravatarUrl : string
+-  IsSelf : bool
++  UserProfileType : UserProfileType
+}
+```
+
+Now we are getting a set of compiler warnings, showing us the directions of the places where we have to fix this property change.  
+
+The first place that we need to fix, the `newProfile` function. Let's change it to accept an one more parameter `userProfileType` and use it to set `UserProfileType` of the new user profile.
+
+```diff
+- let newProfile user = {
++ let newProfile userProfileType user = { 
+    User = user
+    GravatarUrl = gravatarUrl user.EmailAddress
+-   IsSelf = false
++   UserProfileType = userProfileType
+  }
+```
+
+Then in the places where we are calling this `newProfile` function, pass the appropriate user profile type. 
+
+```diff
+  match loggedInUser with
+  | None -> 
+     let! userMayBe = findUser username
+-    return Option.map newProfile userMayBe
++    return Option.map (newProfile OtherNotFollowing) userMayBe
+  | Some (user : User) -> 
+    if user.Username = username then
+      let userProfile = 
+-       {newProfile user with IsSelf = true}
++       newProfile Self user
+      return Some userProfile
+    else  
+      let! userMayBe = findUser username
+-     return Option.map newProfile userMayBe
++     return Option.map (newProfile OtherNotFollowing) userMayBe
+```
+
+For an anonymous user, the user profile will always be other whom he/she is not following. But for a logged in user who is viewing an another user's profile, we need to check the `Social` table and set the type to either `OtherNotFollowing` or `OtherFollowing`. 
+
+Let's keep it as `OtherNotFollowing` for a time being and we'll implement this check shortly. 
+
+The next place that we need to fix is where we are populating the `UserProfileViewModel`. To do it, we first have to add a new property `IsFollowing` in the view model. 
+
+```fsharp
+type UserProfileViewModel = {
+  // ...
+  IsFollowing : bool
+}
+```
+
+And then in the `newUserProfileViewModel` function, populate this and the `IsSelf` property from the `UserProfileType`. 
+
+```fsharp
+let newUserProfileViewModel ... =
+  // ...
+  let isSelf, isFollowing = 
+    match userProfile.UserProfileType with
+    | Self -> true, false
+    | OtherFollowing -> false, true
+    | OtherNotFollowing -> false, false
+  
+  {
+    // ...
+    IsSelf = isSelf
+    IsFollowing = isFollowing
+  }
+```
+
+Now we are good except the *following* check. The last piece that we need to change before implementing this check is updating the *profile.liquid* show either follow or following link based on the `IsFollowing` property.
+
+```diff
+<!-- views/user/profile.liquid -->
+<!-- ... -->
+
+{% unless model.IsSelf %}
+-  <a href="#" id="follow">Follow</a>
++  {% if model.IsFollowing %}
++    <a href="#" id="unfollow">Following</a>
++  {% else %}
++    <a href="#" id="follow" data-user-id="{{model.UserId}}">Follow</a>
++  {% endif %}
+{% endunless %}
+
+```
+
+Great! Now it's time to implement the `isFollowing` check. 
+
+### Implementing The IsFollowing Check
+
+Let's get started by defining a type for this check in the *Social.fs*'s `Domain` module.
+
+```fsharp
+// src/FsTweet.Web/Social.fs
+module Domain =
+  // ...
+  type IsFollowing = 
+    User -> UserId -> AsyncResult<bool, Exception>
+// ...
+```
+
+With this type in place, we can now change the `findUserProfile` to accept a new parameter `isFollowing` of this type and use it to figure out the actual `UserProfileType`.
+
+```fsharp
+module Domain =
+  // ...
+  open Social.Domain
+  // ...
+
+  let findUserProfile 
+    ... (isFollowing : IsFollowing) ...  = asyncTrial {
+    match loggedInUser with
+    | None -> // ...
+    | Some (user : User) -> 
+      // ...
+      else  
+        // ...
+        match userMayBe with
+        | Some otherUser -> 
+          let! isFollowingOtherUser = 
+            isFollowing user otherUser.UserId
+          let userProfileType =
+            if isFollowingOtherUser then
+              OtherFollowing
+            else OtherNotFollowing 
+          let userProfile = 
+            newProfile userProfileType otherUser
+          return Some userProfile
+        | None -> return None
+  }
+```
+
+
+Then add the implementation function `isFollowing` in the `Persistence` module
+
+```fsharp
+// src/FsTweet.Web/Social.fs
+// ...
+module Persistence =
+  // ...
+  open Chessie.ErrorHandling
+  open FSharp.Data.Sql
+  open Chessie
+  // ...
+
+  let isFollowing (getDataCtx : GetDataContext) 
+        (user : User) (UserId userId) = asyncTrial {
+
+    let ctx = getDataCtx ()
+    let (UserId followerUserId) = user.UserId
+
+    let! relationship = 
+      query {
+        for s in ctx.Public.Social do
+          where (s.FollowerUserId = followerUserId && 
+                  s.FollowingUserId = userId)
+      } |> Seq.tryHeadAsync |> AR.catch
+
+    return relationship.IsSome
+  }
+// ...
+```
+
+The logic is straight-forward, we retrieve the releationship by providing both the follower user id and following user's user id. If the relation exists we return `true` else we return `false`. 
+
+Then we need to use pass this function after parially applied the first parameter (`getDataCtx`) to the `findUserProfile` function.
+
+```diff
+let webpart (getDataCtx : GetDataContext) getStreamClient = 
+  let findUser = Persistence.findUser getDataCtx
+- let findUserProfile = findUserProfile findUser
++ let isFollowing = Persistence.isFollowing getDataCtx
++ let findUserProfile = findUserProfile findUser isFollowing
+  // ...
+```
+
+That's it. Now if we run the application and views a profile that we are following, we will be seeing a *following* button instead of *follow* button.
+
+![](/img/fsharp/series/fstweet/following_user.png)
