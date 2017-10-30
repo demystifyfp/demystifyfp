@@ -48,7 +48,7 @@ module Domain =
 
 The `NotifyTweet` typifies a notify tweet function that takes `Tweet` and returns either `unit` or `Exception` asynchronously. 
 
-Then create a new type `PublishTweet` to represent the signature of the orchestration function.
+Then create a new type `PublishTweet` to represent the signature of the orchestration function with its dependencies partially applied.
 
 ```fsharp
 module Domain =
@@ -57,14 +57,9 @@ module Domain =
 
   // ...
 
-  type PublishTweet =
-      CreateTweet -> NotifyTweet -> 
-        User -> Post -> AsyncResult<TweetId, PublishTweetError>
+  type PublishTweet = 
+    User -> Post -> AsyncResult<TweetId, PublishTweetError>
 ```
-
-This `PublishTweet` type represents a function that takes two higher-order functions, `CreateTweet` to create the tweet in the database and `NotifyTweet` to notify that the user has posted a tweet, the `User` who posts the tweet and the tweet `Post` itself. 
-
-It returns either `TweetId` or `PublishTweetError` asynchronously. 
 
 We don't have the `PublishTweetError` type defined yet. So, let's add it first. 
 
