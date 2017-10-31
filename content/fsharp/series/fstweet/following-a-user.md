@@ -667,4 +667,17 @@ let webpart (getDataCtx : GetDataContext) getStreamClient =
 
 That's it. Now if we run the application and views a profile that we are following, we will be seeing a *following* button instead of *follow* button.
 
-![](/img/fsharp/series/fstweet/following_user.png)
+![User Profile V3](/img/fsharp/series/fstweet/following_user.png)
+
+## Summary
+
+We covered lot of ground in this blog post. We started with adding logout and then we moved to adding support for following the user. Then we updated the wall page show the timeline and finally we revisited the user profile page to reflect the social relationship status. 
+
+The source code of this blog post is available on [GitHub](https://github.com/demystifyfp/FsTweet/tree/v0.18)
+
+
+## Exercise
+
+* It'd be great if we can get an email notification when someone follow us in FsTweet.
+
+* How about adding the support for unfollowing a user?
