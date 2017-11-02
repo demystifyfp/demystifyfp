@@ -401,7 +401,7 @@ Then in the *wall.liquid* template, add a reference to this *getstream.fs* file 
 
 ### Initializing GetStream.io JS Library
 
-To initialize the `GetStream.io` javascript client, we need *GetStream.io's* API key and App ID. We are already have it on the server side, So, we just need to pass it.  
+To initialize the `GetStream.io` javascript client, we need *GetStream.io's* API key and App ID. We already have it on the server side, So, we just need to pass it.  
 
 There are two ways we can do it,
 

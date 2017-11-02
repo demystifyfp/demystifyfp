@@ -14,26 +14,26 @@ In this blog post, we are going to create the user profile page.
 
 ## The User Profile Page
 
-We are going to consider the username of the user as the twitter handle in the user profile page and it will be served in the url `/{username}`. 
+We are going to consider the username of the user as the twitter handle and the handler for the URL `/{username}` renders the user's profile page. 
 
-The user profile page will be having the following UI Components.
+The user profile page will have the following UI Components.
 
 1. A Gravatar image of the user along with the username. 
 
-2. List of tweets tweeted by the given user 
+2. List of tweets tweeted by the given user.
 
-3. List of users that he/she following
+3. List of users that he/she is following.
 
 4. List of his/her followers. 
 
 > The components three and four will be addressed in the later blog posts. 
 
-In addition to it, we also have to address the following three sceanrios in the profile page.   
+In addition to it, we also have to address the following three scenarios on the profile page.   
 
 1. Anyone should be able to view a profile of anybody else without logging in to the application. The anonymous user can only view the page. 
 ![User Profile Guest](/img/fsharp/series/fstweet/user_profile_guest.png) 
 
-2. If a logged in user visits an another user profile page, he/she should be able to follow him/her
+2. If a logged in user visits another user profile page, he/she should be able to follow him/her
 ![User Profile Other](/img/fsharp/series/fstweet/user_profile_other.png) 
 
 3. If a logged in user visits his/her profile page, there should not be any provision to follow himself/herself. 
@@ -45,7 +45,7 @@ To start with we are going to implement the first UI Component, the gravatar ima
 
 ### User Profile Liquid Template
  
-Let's get started by creating the a new liquid template *profile.liqud* for the user profile page. 
+Let's get started by creating a new liquid template *profile.liqud* for the user profile page. 
 
 ```bash
 > touch src/FsTweet.Web/views/user/profile.liquid
@@ -140,7 +140,7 @@ let newProfile user = {
 
 The next step is adding the `findUserProfile` function, which finds the user profile by username. 
 
-If the `Username` of the logged in user matches with the `Username` that we are looking to find, we don't need call the `findUserProfile`. Instead we can use the `newProfile` function to get the profile from the `User` and modify its `IsSelf` property to `true`.
+If the `Username` of the logged in user matches with the `Username` that we are looking to find, we don't need to call the `findUserProfile`. Instead, we can use the `User` value that we get from the session cookie and then call `newProfile` function with the logged in user to get the profile and modify its `IsSelf` property to `true`.
 
 ```fsharp
 
@@ -170,7 +170,7 @@ let findUserProfile
 ```
 We are making use of the `findUser` function that we created while [handling user login request]({{< relref "handling-login-request.md#finding-the-user-by-username" >}}).
 
-The `FindUserProfile` type represents the function signature of the `findUserProfile` function with its depencies partially applied.
+The `FindUserProfile` type represents the function signature of the `findUserProfile` function with its dependencies partially applied.
 
 Now we have the domain logic for finding user profile in place and let's turn our attention to the presentation logic!
 
@@ -244,7 +244,9 @@ Then wire these functions up with the actual request handler.
 
 ```fsharp
 // FindUserProfile -> string -> User option -> WebPart
-let renderUserProfile (findUserProfile : FindUserProfile) username loggedInUser ctx = async {
+let renderUserProfile (findUserProfile : FindUserProfile) 
+                        username loggedInUser ctx = async {
+
   match Username.TryCreate username with
   | Success validatedUsername -> 
     let isLoggedIn = 
@@ -257,10 +259,11 @@ let renderUserProfile (findUserProfile : FindUserProfile) username loggedInUser 
     return! webpart ctx
   | Failure _ -> 
     return! renderProfileNotFound ctx
+    
 }
 ```
 
-The final step is exposing this function and adding a HTTP route.
+The final step is exposing this function and adding an HTTP route.
 
 ```fsharp
 // src/FsTweet.Web/UserProfile.fs
@@ -295,14 +298,14 @@ let main argv =
 
 > We need to make sure that this webpart should be the last item in the `choose` list as the path `/%s` matches every path that has this pattern.  
 
-To test drive this new feature, run the application and view the user profile as an anonymous user. Then singup some new users (make sure you verify their email id) and then login and view other users profile. 
+To test drive this new feature, run the application and view the user profile as an anonymous user. Then signup some new users (make sure you verify their email id) and then log in and see other users profile. 
 
-> We haven't added logout yet. So, to login as a new user either clear the cookies in the brower or restart your browser. 
+> We haven't added the log out yet. So, to log in as a new user either clear the cookies in the browser or restart your browser. 
 
 
 ### Adding User Feed
 
-The next UI Component that we need to implement is the tweet feed of the user. Unlike the user feed that we implement in the pevious post, here we are just going to fetch his/her tweets and going to show as a history. 
+The next UI Component that we need to implement is the tweet feed of the user. Unlike the user feed that we added in the previous post, here we are just going to fetch his/her tweets and going to show as a history. 
 
 To enable it we have to pass the GetStream.io's configuration and user details to the client side. Let's add them as properties in the `UserProfileViewModel`. 
 
@@ -351,7 +354,7 @@ Then add the `getStreamClient` parameter to the `newUserProfileViewModel` functi
 Now you will be getting compiler errors as the `onHandleUserProfileSuccess` function was directly calling the `newUserProfileViewModel` function and it doesn't have `getStreamClient` to pass the argument. 
 
 
-Instead of passing the value of `GetStream.Client` around, we can partially apply it in the `webpart` function and pass the partially applied `onHandleUserProfileSuccess` function as argument to the `renderUserProfile` function and eventually to the `onHandleUserProfileSuccess` function.
+Instead of passing the value of `GetStream.Client` around, we can partially apply it in the `onHandleUserProfileSuccess` function and pass as an argument to the `renderUserProfile` function and eventually to the `onHandleUserProfileSuccess` function.
 
 ```diff
 -  let webpart (getDataCtx : GetDataContext) = 
@@ -381,6 +384,7 @@ Instead of passing the value of `GetStream.Client` around, we can partially appl
 +  let onFindUserProfileSuccess newUserProfileViewModel isLoggedIn userProfileMayBe = 
 ```
 
+
 The final step is passing the `getStreamClient` from the application's main function.
 
 ```diff
@@ -397,7 +401,7 @@ let main argv =
   // ...
 ```
 
-With this we are done with the server side changes for showing a user feed in the user profile page. 
+With this, we are done with the server side changes for showing a user feed in the user profile page. 
 
 The next change that we need to do is on the liquid template *profile.liquid* 
 
@@ -462,7 +466,7 @@ $(function(){
 });
 ```
 
-The code is straight-forward, we are initializing the GetStream.io's client and the user feed. And then we are retreving the last 25 tweets of the user.
+The code is straight-forward, we are initializing the GetStream.io's client and the user feed. And then we are retrieving the last 25 tweets of the user.
 
 Awesome!.
 
