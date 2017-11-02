@@ -1,7 +1,6 @@
 ---
 title: "Following a User"
 date: 2017-10-28T05:06:53+05:30
-draft: true
 tags : [suave, SQLProvider, fsharp, chessie, getstream]
 ---
 
@@ -9,15 +8,15 @@ Hello!
 
 We are on our way to complete the blog post series on [Creating a Twitter Clone in F# using Suave](TODO). 
 
-In this nineteenth part, we are going to implement the core feature of Twitter, Following other users and viewing their tweets in his/her wall page.  
+In this nineteenth part, we are going to implement the core feature of Twitter, Following other users and viewing their tweets on his/her wall page.  
 
-## Adding Logout
+## Adding Log out
 
-To test drive the implementation of following a user in FsTweet, we may need to logout and login as different user. But we haven't added the logout functionality yet. 
+To test drive the implementation of following a user in FsTweet, we may need to log out and log in as a different user. But we haven't added the logout functionality yet. 
 
-So, as part of this feature implementation, let's get started with implementing logout. 
+So, as part of this feature implementation, let's get started with implementing log out. 
 
-The logout functionality is simpler to implement. Thanks to the `deauthenticate` WebPart from the `Suave.Authentication` module which clears both the authentication and the state cookie. After clearing the cookies, we just need to redirect the user to the login page.
+The log out functionality is more straightforward to implement. Thanks to the `deauthenticate` WebPart from the `Suave.Authentication` module which clears both the authentication and the state cookie. After removing the cookies, we just need to redirect the user to the login page.
 
 Let's add a new path `/logout` in *Auth.fs* and handle the logout request as mentioned.
 
@@ -53,11 +52,11 @@ Let's get started by creating a new file *Social.fs* in the *FsTweet.Web* projec
 
 The backend implementation of following a user involves two things. 
 
-1. Persisting the social relationship (following & follower) in the database.
+1. Persisting the social connection (following & follower) in the database.
 
 2. Subscribing to the other user's twitter feed.
 
-As we did for the other features, let's add a `Domain` module and orchasterate this functionality. 
+As we did for the other features, let's add a `Domain` module and orchestrate this functionality. 
 
 ```fsharp
 // FsTweet.Web/Social.fs
@@ -83,16 +82,18 @@ module Domain =
   } 
 ``` 
 
-The `CreateFollowing` and the `Subscribe` types represents the function signatures of the two tasks that we need to while following a user. 
+The `CreateFollowing` and the `Subscribe` types represent the function signatures of the two tasks that we need to do while following a user. 
 
 The next step is defining functions which implement these two functionalities.
 
-### Persisting the social relationship
+### Persisting the social connection
 
-To persist the social relationship, we need to have a new table. So, As a first step, let's add a migration (script) to create this new table. 
+To persist the social connection, we need to have a new table. So, As a first step, let's add a migration (script) to create this new table. 
 
 ```fsharp
 // src/FsTweet.Db.Migrations/FsTweet.Db.Migrations.fs
+// ...
+
 [<Migration(201710280554L, "Creating Social Table")>]
 type CreateSocialTable()=
   inherit Migration()
@@ -112,13 +113,13 @@ type CreateSocialTable()=
     base.Delete.Table("Tweets") |> ignore
 ```
 
-Then run the application and this table will be created in the database.
+Then run the application, and the fluent migrator creates this table in the database.
 
 Make sure to verify the underlying schema using *psql*.
 
 ![Social Table](/img/fsharp/series/fstweet/social_table_schema.png)
 
-The next step is defining the function which persist the social relationship in this table. 
+The next step is defining the function which persists the social connection in this table. 
 
 Create a new module `Persistence` in the *Social.fs* file and define the `createFollowing` function as below
 
@@ -142,11 +143,11 @@ module Persistence =
      submitUpdates ctx
 ```
 
-We are using the term `follower` to represent the current logged in user and `following user` to represent the user that the logged in user about to follow. 
+We are using the term `follower` to represent the current logged in user and the `following user` to represent the user that the logged in user about to follow. 
 
 ### Subscribing to the User Feed
 
-The second task is subscribing to the user feed, so that the follower will be getting the tweets from the users he/she is following.
+The second task is subscribing to the user feed so that the follower will be getting the tweets from the users he/she is following.
 
 As we did for [notifying a new tweet]({{< relref "adding-user-feed.md#notifying-new-tweet">}}), let's create a new module `GetStream` and add the `subscribe` function.
 
@@ -171,13 +172,13 @@ module GetStream =
     |> AR.catch // AsyncResult<unit, Exception>
 ```
 
-In *GetStream.io*'s [vocabulary](https://getstream.io/get_started/#follow), following a user means getting the **timeline feed** of the follower and [follow the other user](https://getstream.io/docs/#following) using this timeline feed.
+In *GetStream.io*'s [vocabulary](https://getstream.io/get_started/#follow), following a user means, getting the **timeline feed** of the follower and [follow the other user](https://getstream.io/docs/#following) using this timeline feed.
 
 ### The Presentation Layer on Server Side
 
-In the last three sections, we built the internal pieces that are required to follow a user. The last step is wiring the pieces together with the presentation layer and expose an HTTP endpoint to carry out the functionality.
+In the last three sections, we built the internal pieces that are required to follow a user. The final step is wiring the parts together with the presentation layer and expose an HTTP endpoint to carry out the functionality.
 
-Let's start with defining the sample JSON that the follow user endpoint should support. 
+Let's start with defining the sample JSON that the *follow user* endpoint should support. 
 
 ```json
 {
@@ -185,7 +186,7 @@ Let's start with defining the sample JSON that the follow user endpoint should s
 }
 ```
 
-Then add a server side type to represent this JSON request body.
+Then add a server-side type to represent this JSON request body.
 
 ```fsharp
 // FsTweet.Web/Social.fs
@@ -201,7 +202,7 @@ module Suave =
 
 ```
 
-If follow user operation is successful, we need to return *204 No Content* and for failure case, we have to print the actual exception in the console and return *500 Internal Server Error*. 
+If following a user operation is successful, we need to return *204 No Content*, and if it is a failure, we have to print the actual exception details to the console and return *500 Internal Server Error*. 
 
 ```fsharp
 // FsTweet.Web/Social.fs
@@ -242,7 +243,7 @@ module Suave =
   }
 ```  
 
-The `handleFollowUser` function deserialize the request to `FollowUserRequest` using the `deserialize` function that we defined earlier in the *Json.fs* file. If deserialization fails we are returning bad request. For a valid request,  we are calling the `followUser` function and maps its success and failure results to `WebPart`. 
+The `handleFollowUser` function deserializes the request to `FollowUserRequest` using the `deserialize` function that we defined earlier in the *Json.fs* file. If deserialization fails, we are returning bad request. For a valid request,  we are calling the `followUser` function and maps its success and failure results to `WebPart`. 
 
 The last piece is wiring this handler with the `/follow` endpoint. 
 
@@ -285,9 +286,9 @@ let main argv =
 
 ### The Presentation Layer on Client Side
 
-Now the backend is capable of handling the request to follow a user and we have to update our front-end code to release this new feature. 
+Now the backend is capable of handling the request to follow a user, and we have to update our front-end code to release this new feature. 
 
-To follow a user, we need his/her user id. To retreive it on the client-side, let's add a [data attribute](https://developer.mozilla.org/en-US/docs/Learn/HTML/Howto/Use_data_attributes) in the *profile.liquid* template.
+To follow a user, we need his/her user id. To retrieve it on the client-side, let's add a [data attribute](https://developer.mozilla.org/en-US/docs/Learn/HTML/Howto/Use_data_attributes) to the `follow` button in the *profile.liquid* template.
 
 ```diff
 // views/user/profile.liquid
@@ -296,7 +297,7 @@ To follow a user, we need his/her user id. To retreive it on the client-side, le
 + <a id="follow" data-user-id="{{model.UserId}}">Follow</a>
 ``` 
 
-> We are already having the user id of the profile being viewed as a global variable `fsTweet.user.id` in the JS side. This approach is to demonstrate an another approach to communicate between client and server. 
+> We are already having the user id of the profile being viewed as a global variable `fsTweet.user.id` in the JS side. This approach is to demonstrate another method to share data between client and server. 
 
 Then add a new javascript file *social.js* which handles the client side activities for following a user.
 
@@ -330,19 +331,19 @@ $(function(){
 });
 ```
 
-This jQuery snippet fires an AJAX Post request with the user id upon clicking the follow button and shows an alert for both success and failure cases of the response. 
+This javascript snippet fires an AJAX Post request with the user id using jQuery upon clicking the follow button and it shows an alert for both success and failure cases of the response. 
 
 That's it! We can follow a user, by clicking the follow button in his/her profile page.  
 
 ### Revisiting User Wall
 
-In the current implementation, the user's wall page is just subscribed to the logged in user's feed. This subscription will populate only if the user posts a tweet. So, the Wall page will be empty most of the cases.
+In the current implementation, the user's wall page has subscribed only to the logged in user's feed. This subscription will populate just if the user posts a tweet. So, the Wall page will be empty most of the cases.
 
-Ideally, it should display the user's timeline where he/she can see the tweets from his/her followers. And also, we need a real time update when the timeline receives a new tweet from the follower. 
+Ideally, it should display the user's timeline where he/she can see the tweets from his/her followers. And also, we need a real-time update when the timeline receives a new tweet from the follower. 
 
-*GetStream.io*'s javascript client library already support these features. So, we just have to enable it.
+*GetStream.io*'s javascript client library already supports these features. So, we just have to enable it.
 
-As a first step, in addition to passing the user feed token, we have to pass the timeline token. 
+As a first step, in addition to passing the user feed token, we have to share the timeline token. 
 
 Let's add a new function in *Stream.fs* to get an user's timeline feed.
 
@@ -352,7 +353,7 @@ let timeLineFeed getStreamClient (userId : int) =
   getStreamClient.StreamClient.Feed("timeline", userId.ToString())
 ```
 
-Then update the view model of the Wall page with a new property `TimelineToken` and update this property with the read only token of the user's timeline feed.
+Then update the view model of the Wall page with a new property `TimelineToken` and update this property with the read-only token of the user's timeline feed.
 
 ```diff
 // src/FsTweet.Web/Wall.fs
@@ -408,7 +409,7 @@ $(function(){
 
 This would update the wall page when the timeline feed receives a new tweet. 
 
-To have the wall page with a populate timeline, we need to fetch the tweets from the timeline feed just like what we did for fetching the user's tweet in the user profile page. 
+To have the wall page with a populate timeline, we need to fetch the tweets from the timeline feed just like what we did for getting the user's tweet on the user profile page. 
 
 ```js
 // assets/js/wall.js
@@ -424,7 +425,7 @@ $(function(){
 });
 ```
 
-In *GetStream.io*, the timeline feed of a user will not have the user's personal tweets. So, the populated wall page here will not have user's tweet. To show both the user's tweets and his/her timeline tweets, we can fetch the user's tweets as well and merge both the feeds and then sort with time.
+In *GetStream.io*, the timeline feed of a user will not have the user's tweets. So, the populated wall page here will not have user's tweet. To show both the user's tweets and his/her timeline tweets, we can fetch the user's tweets as well and merge both the feeds and then sort with time.
 
 To do it, replace the above snippet with the below one
 
@@ -454,7 +455,7 @@ $(function(){
 
 Cool! 
 
-Now run the app, open two browser windows, login as two different users and follow the other user.  
+Now run the app, open two browser windows, log in as two different users and follow the other user.  
 ![User Wall With Live Update](/img/fsharp/series/fstweet/following_a_user.gif)
 
 After following the other user, you can get the live updates. 
@@ -467,7 +468,7 @@ We made it!
 
 Currently, In the user profile page, we are always showing *Follow* button, even if the logged in user already following the given user. 
 
-As we have added support for following a user, while rendering the user profile page, we can now check whether the user is being followed by the logged in user or not and show either the *follow* button or *following* button accordingly. 
+As we have added support for following a user, while rendering the user profile page, we can now check whether the logged in user follows the given user or not and show either the *follow* button or *following* button accordingly. 
 
 To enable this, let's get add a new type `UserProfileType` to represent all the three possible cases while serving the user profile page.
 
@@ -493,9 +494,9 @@ type UserProfile = {
 }
 ```
 
-Now we are getting a set of compiler warnings, showing us the directions of the places where we have to fix this property change.  
+Now we are getting a set of compiler warnings, showing us the directions of the places where we have to go and fix this property change.  
 
-The first place that we need to fix, the `newProfile` function. Let's change it to accept an one more parameter `userProfileType` and use it to set `UserProfileType` of the new user profile.
+The first place that we need to fix is the `newProfile` function. Let's change it to accept a one more parameter `userProfileType` and use it to set `UserProfileType` of the new user profile.
 
 ```diff
 - let newProfile user = {
@@ -529,7 +530,7 @@ Then in the places where we are calling this `newProfile` function, pass the app
 
 For an anonymous user, the user profile will always be other whom he/she is not following. But for a logged in user who is viewing an another user's profile, we need to check the `Social` table and set the type to either `OtherNotFollowing` or `OtherFollowing`. 
 
-Let's keep it as `OtherNotFollowing` for a time being and we'll implement this check shortly. 
+Let's keep it as `OtherNotFollowing` for the time being and we'll implement this check shortly. 
 
 The next place that we need to fix is where we are populating the `UserProfileViewModel`. To do it, we first have to add a new property `IsFollowing` in the view model. 
 
@@ -558,7 +559,7 @@ let newUserProfileViewModel ... =
   }
 ```
 
-Now we are good except the *following* check. The last piece that we need to change before implementing this check is updating the *profile.liquid* show either follow or following link based on the `IsFollowing` property.
+Now we are right except the *following* check. The last piece that we need to change before implementing this check is updating the *profile.liquid* show either follow or following link based on the `IsFollowing` property.
 
 ```diff
 <!-- views/user/profile.liquid -->
@@ -640,21 +641,21 @@ module Persistence =
     let ctx = getDataCtx ()
     let (UserId followerUserId) = user.UserId
 
-    let! relationship = 
+    let! connection = 
       query {
         for s in ctx.Public.Social do
           where (s.FollowerUserId = followerUserId && 
                   s.FollowingUserId = userId)
       } |> Seq.tryHeadAsync |> AR.catch
 
-    return relationship.IsSome
+    return connection.IsSome
   }
 // ...
 ```
 
-The logic is straight-forward, we retrieve the releationship by providing both the follower user id and following user's user id. If the relation exists we return `true` else we return `false`. 
+The logic is straight-forward, we retrieve the social connection by providing both the follower user id and following user's user id. If the relationship exists we return `true`, else we return `false`. 
 
-Then we need to use pass this function after parially applied the first parameter (`getDataCtx`) to the `findUserProfile` function.
+Then we need to pass this function after partially applied the first parameter (`getDataCtx`) to the `findUserProfile` function.
 
 ```diff
 let webpart (getDataCtx : GetDataContext) getStreamClient = 
@@ -665,19 +666,19 @@ let webpart (getDataCtx : GetDataContext) getStreamClient =
   // ...
 ```
 
-That's it. Now if we run the application and views a profile that we are following, we will be seeing a *following* button instead of *follow* button.
+That's it. Now if we run the application and views a profile that we are following, we will be seeing the *following* button instead of the *follow* button.
 
 ![User Profile V3](/img/fsharp/series/fstweet/following_user.png)
 
 ## Summary
 
-We covered lot of ground in this blog post. We started with adding logout and then we moved to adding support for following the user. Then we updated the wall page show the timeline and finally we revisited the user profile page to reflect the social relationship status. 
+We covered a lot of ground in this blog post. We started with adding log out and then we moved to adding support for following the user. Then we updated the wall page to show the timeline, and finally we revisited the user profile page to reflect the social connection status. 
 
 The source code of this blog post is available on [GitHub](https://github.com/demystifyfp/FsTweet/tree/v0.18)
 
 
 ## Exercise
 
-* It'd be great if we can get an email notification when someone follow us in FsTweet.
+* It'd be great if we can get an email notification when someone follows us in FsTweet.
 
 * How about adding the support for unfollowing a user?
