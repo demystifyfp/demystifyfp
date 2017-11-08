@@ -1,7 +1,7 @@
 ---
 title: "Fetching Followers and Following Users"
 date: 2017-11-01T06:59:48+05:30
-draft: true
+tags: [suave, SQLProvider, chiron, rop, fsharp, chessie]
 ---
 
 Hi,
@@ -29,7 +29,7 @@ module Domain =
 // ...
 ```
 
-The implementation function of this type, will be leverging the [composable queries](http://fsprojects.github.io/SQLProvider/core/composable.html) concept to find the given user id's followers
+The implementation function of this type will be leveraging the [composable queries](http://fsprojects.github.io/SQLProvider/core/composable.html) concept to find the given user id's followers
 
 ```fsharp
 // src/FsTweet.Web/Social.fs
@@ -61,13 +61,13 @@ module Persistence =
   }
 ```
 
-Using the `selectFollowersQuery`, we are first getting the list of followers user ids. Then we are using these ids to the get corressponding user details. 
+Using the `selectFollowersQuery`, we are first getting the list of followers user ids. Then we are using these identifiers to the get corresponding user details. 
 
-One thing to notice here is, we are returning a sequence of `DataContext.``public.UsersEntity`` ` on success. But what we want to return is its domain respresentation, a list of `User`. 
+One thing to notice here is, we are returning a sequence of `DataContext.public.UsersEntity ` on success. But what we want to return is its domain representation, a list of `User`. 
 
 Like what we did for [finding the user by username]({{< relref "handling-login-request.md#finding-the-user-by-username">}}), we need to map the all the user entities in the sequence to their respective domain model. 
 
-To do it, we first need to do extract the mapping functionality from the `mapUser` function. 
+To do it, we first need to extract the mapping functionality from the `mapUser` function. 
 
 ```fsharp
 // 
@@ -115,7 +115,7 @@ module Persistence =
   // ...
 ```
 
-I just noticed that the name `mapUser` misleading. So, rename it to `mapUserEntity` to clearly communicate what it does.
+I just noticed that the name `mapUser` misleading. So, rename it to `mapUserEntity` to communicate what it does.
 
 ```diff
 module Persistence =
@@ -170,7 +170,7 @@ let mapUserEntities (users : DataContext.``public.UsersEntity`` seq) =
   |> AR // AsyncResult<User list, Exception>
 ```
 
-Using the `mapFailure` function from Chessie, we are tranforming the list of exceptions into an `AggregateException` and then we are mapping it to `AsyncResult<User list, Exception>`.
+Using the `mapFailure` function from Chessie, we are transforming the list of exceptions into an `AggregateException`, and then we are mapping it to `AsyncResult<User list, Exception>`.
 
 With this `mapUserEntities` function in place, we can now return a `User list` in the `findFollowers` function
 
@@ -187,7 +187,7 @@ module Persistence =
   } 
 ```
 
-Now we have the persitence layer ready. 
+Now we have the persistence layer ready. 
 
 The JSON response that we are going to send will have the following structure
 
@@ -203,7 +203,7 @@ The JSON response that we are going to send will have the following structure
 
 > To keep it simple, we are just returning the username of the users.
 
-To model the corresponding server side representation of this JSON object, let's add some types along with the static member function `ToJson` which is required by the Chiron library to serialize the type to JSON.
+To model the corresponding server-side representation of this JSON object, let's add some types along with the static member function `ToJson` which is required by the Chiron library to serialize the type to JSON.
 
 ```fsharp
 // src/FsTweet.Web/Social.fs
@@ -236,7 +236,7 @@ module Suave =
   // ...
 ```
 
-To expose the `findFollowers` function as a HTTP API, we first need to specify what we need to do for both success and failure.
+To expose the `findFollowers` function as an HTTP API, we first need to specify what we need to do for both success and failure.
 
 ```fsharp
 module Suave =
@@ -279,7 +279,7 @@ Finally, add the route for the HTTP endpoint.
 
 ## Adding Following Users API
 
-The API to serve the list of users being followed by the given user follows the similar structure except the actual backend query
+The API to serve the list of users being followed by the given user follows the similar structure except for the actual backend query
 
 ```fsharp
 // src/FsTweet.Web/Social.fs
@@ -311,7 +311,7 @@ module Persistence =
 
 In the `selectFollowingUsersQuery`, we are selecting the list of user ids that are being followed by the provided user id.
 
-Like `fetchFollowers`, we just have to add `fetchFollowingUsers` function and expose it in a new HTTP route
+Like `fetchFollowers`, we just have to add `fetchFollowingUsers` function and expose it to a new HTTP route
 
 ```fsharp
 module Suave =
@@ -342,7 +342,7 @@ Now we both the endpoints are up and running.
 
 ## Updating UI
 
-To consume these two APIs and rendering it on the client side, we need to update the *social.fs*
+To consume these two APIs and to render it on the client side, we need to update the *social.js*
 
 ```js
 // src/FsTweet.Web/assets/js/social.js
@@ -386,8 +386,8 @@ That's it!
 
 In this blog post, we have exposed two HTTP APIs to retrieve the list of followers and following users. 
 
-As we saw in other posts, we are just doing transformations to achieve what we want. In the process we are creating some useful abstractions (like what we did here for `mapUserEntityToUser` function) which in turn helping us to deliver the features faster (like `AR.either` function). 
+As we saw in other posts, we are just doing transformations to achieve what we want. In the process, we are creating some useful abstractions (like what we did here for `mapUserEntityToUser` function) which in turn helps us to deliver the features faster (like the `AR.either` function). 
 
-With this we are done with all the features that will be part of this initial version of FsTweet. In the upcoming posts, we are going to add support of logging and learn how to deploy.
+With this, we are done with all the features that will be part of this initial version of FsTweet. In the upcoming posts, we are going to add support for logging and learn how to deploy it to Azure.
 
-As usual, the source code of this blog post is available on [GitHub](https://github.com/demystifyfp/FsTweet/tree/v0.19)
+As usual, the source code of this blog post is available on [GitHub](https://github.com/demystifyfp/FsTweet/tree/v0.19).
