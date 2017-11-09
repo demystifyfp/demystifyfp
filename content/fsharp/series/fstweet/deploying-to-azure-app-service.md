@@ -2,6 +2,7 @@
 title: "Deploying to Azure App Service"
 date: 2017-11-08T07:11:34+05:30
 draft: true
+tags: ["FAKE", "azure"]
 ---
 
 Hi There!
@@ -155,3 +156,267 @@ As a last step, alter the build order to leverage the targets that we created ju
 ```
 
 That's it!
+
+## Supporting F# Compiler 4.0
+
+At the time of this writing, The F# Compiler version that has been supported by Azure App Service is 4.0. But we developed the application using F# 4.1. So, we have to compile our code using F# 4.0 before deploying.
+
+When we compile our application using F# 4.0 compiler, we'll get an compiler error
+
+```bash
+...\FsTweet.Web\Json.fs(17,41): 
+  Unexpected identifier in type constraint. 
+Expected infix operator, quote symbol or other token.
+```
+
+The piece of code that is bothering here is this one 
+
+```fsharp
+let inline deserialize< ^a when (^a or FromJsonDefaults) 
+                          : (static member FromJson: ^a -> ^a Json)> 
+                          req : Result< ^a, string> =
+  // ...
+```
+
+If you check out the [release notes of F# 4.1](https://blogs.msdn.microsoft.com/dotnet/2017/03/07/announcing-f-4-1-and-the-visual-f-tools-for-visual-studio-2017-2/), you can find there are some improvements made on Statically Resolved Type Parameter support to fix this error (or bug).
+
+Fortunately, rest of codebase are in tact with F# 4.0 and we just need to fix this one. 
+
+As a first step, comment out the `deserialize` function in the `JSON` module and the add the following new implementation.
+
+```fsharp
+// src/FsTweet.Web/Json.fs
+// ...
+
+// Json -> Choice<'a, string> -> HttpRequest -> Result<'a, string>
+let deserialize tryDeserialize req =
+  parse req
+  |> bind (fun json -> tryDeserialize json |> ofChoice)
+```
+
+This new version of the `deserialize` is similar to the old one except that we are going to get the function `Json.tryDeserialize` as a parameter (`tryDeserialize`) instead of using it directly inside the function. 
+
+Then we have to update the places where this function is being used
+
+```diff
+// src/FsTweet.Web/Social.fs
+...
+let handleFollowUser (followUser : FollowUser) (user : User) ctx = async {	
+- match JSON.deserialize ctx.request with
++ match JSON.deserialize Json.tryDeserialize ctx.request with
+  ...
+```
+
+```diff
+// src/FsTweet.Web/Social.fs
+...
+let handleNewTweet publishTweet (user : User) ctx = async {
+- match JSON.deserialize ctx.request with
++ match JSON.deserialize Json.tryDeserialize ctx.request  with
+  ...
+```
+
+## Http Bindings
+
+We are currently using default HTTP bindings provided by Suave. So, when we run our application locally, the web server will be listening on the default port `8080`. 
+
+But when we are running it in Azure or in any other cloud vendor, we have to use the port providing by them.
+
+In addition to that, the default HTTP binding uses the loopback address `127.0.0.1` instead of `0.0.0.0` which makes it [non-accessible](https://stackoverflow.com/questions/20778771/what-is-the-difference-between-0-0-0-0-127-0-0-1-and-localhost) from the other hosts. 
+
+We have to fix both of these, in order to run our application in cloud. 
+
+```diff
+// src/FsTweet.Web/FsTweet.Web.fs
+// ...
+open System.Net
+// ...
+let main argv = 
+  // ...
+
++ let ipZero = IPAddress.Parse("0.0.0.0")
+  
++ let port = 
++   Environment.GetEnvironmentVariable "PORT"
+
++ let httpBinding =
++   HttpBinding.create HTTP ipZero (uint16 port)
+
+  let serverConfig = 
+    {defaultConfig with 
+-     serverKey = serverKey}
++     serverKey = serverKey
++     bindings=[httpBinding]}
+```
+
+We are getting the port number to listen from the environment variable `PORT` and modifying the `defaultConfig` to use the custom http binding instead of the default one. 
+
+> In Azure App Service, the port to listen is already available in the environment variable `HTTP_PLATFORM_PORT`. But we are using `PORT` here to avoid cloud vendor specific stuffs in the codebase. Later via configuration (outside the codebase), we will be mapping these environment variables.   
+
+## The web.config File
+
+[As mentioned](https://suave.io/azure-app-service.html) in Suave's documention, we need to have a web.config to instruct IIS to route the traffic to Suave.
+
+Create a new file *web.config* in the root directory and update it as below
+
+```bash
+> touch web.config
+```
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+  <system.webServer>
+
+    <handlers>
+      <remove name="httpplatformhandler" />
+      <add
+        name="httpplatformhandler"
+        path="*"
+        verb="*"
+        modules="httpPlatformHandler"
+        resourceType="Unspecified"
+      />
+    </handlers>
+
+    <httpPlatform 
+      stdoutLogEnabled="false"
+      startupTimeLimit="20" 
+      processPath="%HOME%\site\wwwroot\FsTweet.Web.exe"
+      >
+
+      <environmentVariables>
+        <environmentVariable name="PORT" value="%HTTP_PLATFORM_PORT%" />
+      </environmentVariables>
+    </httpPlatform>
+    
+  </system.webServer>
+</configuration>
+```
+
+Most of the above content was copied from the documentation and we have modified the following
+
+* `processPath` - specifies the location of the `FsTweet.Web` executable. 
+* `environmentVariables` - creates a new envrionment variable `PORT` with the value from the environment variable `HTTP_PLATFORM_PORT`.
+* `stdoutLogEnabled` - disables *stdout* log. (We'll revisit it the next blog post)
+
+## Revisiting Build Script
+
+To deploy FsTweet on Azure App Service we are going to use [Kudu](https://github.com/projectkudu). FAKE library has good support for Kudu and we can deploy our application right from our build script.
+
+FAKE library provides a `kuduSync` function which copies with semantic appropriate for deploying web site files. Before calling `kuduSync`, we need to stage the files (in a temporary directory) that has to be copied. This staging directory path can be retrieved from the FAKE Library's `deploymentTemp` binding. Then the `kuduSync` function sync the files for deployment. 
+
+The `deploymentTemp` directory is exact replica of our local `build` directory on the deloyment side. So, instead of staging the files explicitly, we can use this directory as build directory. An another benefit is user account which will be deploying has full access to this directory.
+
+To do the deployment from our build script, we first need to know what is the environment that we are in through the environment variable `FSTWEET_ENVIRONMENT`.
+
+```fsharp
+// build.fsx
+// ...
+open Fake.Azure
+
+let env = environVar "FSTWEET_ENVIRONMENT" 
+```
+
+Based on this `env` value, we can set the build directory.
+
+```diff
+// build.fsx
+// ...
+
+let env = environVar "FSTWEET_ENVIRONMENT" 
+
+- // Directories		
+- let buildDir  = "./build/"		
+- let deployDir = "./deploy/"
+
++ let buildDir  = 
++   if env = "dev" then 
++     "./build" 
++   else 
++     Kudu.deploymentTemp
+
+// ...
+
+  Target "Clean" (fun _ ->
+-   CleanDirs [buildDir; deployDir]		
++   CleanDirs [buildDir]
+  )
+```
+
+For dev environment, we'll be using `./build` as build directory and `Kudu.deploymentTemp` as build directory in the other environments. We've also removed the `deployDir` (that was part of the auto-genrated build file) as we are not using it.
+
+Then we need to two more targets
+
+```fsharp
+// build.fsx
+// ...
+
+Target "CopyWebConfig" ( fun _ ->
+  FileHelper.CopyFile Kudu.deploymentTemp "web.config")
+
+Target "Deploy" Kudu.kuduSync
+
+// ...
+```
+
+The `CopyWebConfig` copies the `web.config` to the `Kudu.deploymentTemp` directory (aka staging directory). 
+
+The `Deploy` just calls the `Kudu.kuduSync` function. 
+
+The last thing that we need to revist in the build script is the build order. 
+
+We need two build orders. One to run the application locally (which we already have) and another one to deploy. In the latter case, the we don't need to run the application explicitly as Azure Web App takes cares of executing our application using the *web.config* file. 
+
+To make it possible, Replace the existing build order with the below one
+
+```fsharp
+// build.fsx
+// ...
+
+// Build order
+"Clean"
+==> "BuildMigrations"
+==> "RunMigrations"
+==> "VerifyLocalDbConnString"
+==> "ReplaceLocalDbConnStringForBuild"
+==> "Build"
+==> "RevertLocalDbConnStringChange"
+==> "Views"
+==> "Assets"
+
+
+"Assets"
+==> "Run"
+
+"Assets"
+==> "CopyWebConfig"
+==> "Deploy"
+```
+
+Now we have two different Target execution hiearchy. Refer [this detailed documentation](https://fake.build/legacy-core-targets.html) to know how the order hierarchy works in FAKE. 
+
+## PostgreSQL Database Setup
+
+To run FsTweet on cloud, we need to have a database on the cloud. We can make use of [ElephantSQL](https://www.elephantsql.com/) which provides a [free plan](https://www.elephantsql.com/plans.html). 
+
+Create a new free database instance in ElephantSQL and note down its credentails to pass it as a connection string to our application. 
+
+![ElephantSQL credentials](/img/fsharp/series/fstweet/elephant_sql_credentials.png)
+
+## GetStream.io Setup
+
+Next thing that we need to set up is *GetStream.io*. Create a new app called *fstweet*.
+
+![GetStream New App Creation](/img/fsharp/series/fstweet/getstream_new_app.png)
+
+And create two *flat feed* groups, `user` and `timeline`.
+
+![](/img/fsharp/series/fstweet/getstream_new_feed.png)
+
+![](/img/fsharp/series/fstweet/getstream_feeds.png)
+
+After creation keep a note of the App Id, Key and Secret
+
+![](/img/fsharp/series/fstweet/getstream_key_and_secret.png)
+

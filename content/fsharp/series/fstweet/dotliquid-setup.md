@@ -65,7 +65,7 @@ Let's have a directory called `views` in the `FsTweet.Web` project to put the li
 > mkdir src/FsTweet.Web/views
 ```
 
-The add a new function called `initDotLiquid`, which invokes the required helper functions to initialize DotLiquid to use this `views` directory for templates and `CSharpNamingConvention`
+The add a new function called `initDotLiquid`, which invokes the required helper functions to initialize DotLiquid to use this `views` directory for templates. 
 
 ```fsharp
 // FsTweet.Web.fs
@@ -78,15 +78,19 @@ let currentPath =
   Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)
 
 let initDotLiquid () =
-  setCSharpNamingConvention ()
   let templatesDir = Path.Combine(currentPath, "views")
   setTemplatesDir templatesDir
 
 [<EntryPoint>]
 let main argv =
   initDotLiquid ()
+  setCSharpNamingConvention ()
   // ...
 ```
+
+By default, DotLiquid uses Ruby Naming Convention to refer the view model properties in the liquid template. For example, if you are passing a record type having a property `UserId` as a view model while using it in the liquid template, we have to use `user_id` instead of `UserId` to access the value. 
+
+We are overriding this default convention by calling the `setCSharpNamingConvention` function from the `Suave.DotLiquid` library.  
 
 ## Updating Build Script To Copy Views Directory
 
