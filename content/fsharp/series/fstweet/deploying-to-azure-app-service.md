@@ -396,6 +396,29 @@ To make it possible, Replace the existing build order with the below one
 
 Now we have two different Target execution hiearchy. Refer [this detailed documentation](https://fake.build/legacy-core-targets.html) to know how the order hierarchy works in FAKE. 
 
+## Invoking Build Script
+
+We have a build script that automates all the required activities to do the deployment. But, who is going to run the this script in the first place?
+
+That's where [.deployment file](https://github.com/projectkudu/kudu/wiki/Customizing-deployments#deployment-file) comes into picture. 
+
+Usign this file, we can specify what command to run to deploy the application in Azure App Service.
+
+Let's create this file in the application's root directory and update it to invoke the build script.
+
+```bash
+> touch .deployment
+```
+
+```ini
+[config]
+command = build.cmd Deploy
+```
+
+> The *build.cmd* was created by Forge during project initialization.
+
+With this we are done with all the coding changes that are required to perform the deployment. 
+
 ## PostgreSQL Database Setup
 
 To run FsTweet on cloud, we need to have a database on the cloud. We can make use of [ElephantSQL](https://www.elephantsql.com/) which provides a [free plan](https://www.elephantsql.com/plans.html). 
@@ -406,7 +429,9 @@ Create a new free database instance in ElephantSQL and note down its credentails
 
 ## GetStream.io Setup
 
-Next thing that we need to set up is *GetStream.io*. Create a new app called *fstweet*.
+Next thing that we need to set up is *GetStream.io* as we can't use the one that we used during development.
+
+Create a new app called *fstweet*.
 
 ![GetStream New App Creation](/img/fsharp/series/fstweet/getstream_new_app.png)
 
@@ -420,3 +445,161 @@ After creation keep a note of the App Id, Key and Secret
 
 ![](/img/fsharp/series/fstweet/getstream_key_and_secret.png)
 
+
+## Create Azure App Service
+
+With all the dependent services are up, our next focus is creating an azure app service.
+
+Login
+
+```bash
+> az login
+To sign in, use a web browser to open the page https://aka.ms/devicelogin and 
+  enter the code H2ABMSZR3 to authenticate
+```
+
+![Code Prompt]
+
+```json
+[
+  {
+    "cloudName": "AzureCloud",
+    "id": "900b4d47-d0c4-888a-9e6d-000061c82010",
+    "isDefault": true,
+    "name": "...",
+    "state": "Enabled",
+    "tenantId": "9f67d6b5-5cb4-8fc0-a5cc-345f9cd46e7a",
+    "user": {
+      "name": "...",
+      "type": "user"
+    }
+  }
+]
+```
+
+Deployment User
+
+```bash
+> az webapp deployment user set --user-name fstdeployer --password secret123
+```
+
+```json
+{
+  "id": null,
+  "kind": null,
+  "name": "web",
+  "publishingPassword": null,
+  "publishingPasswordHash": null,
+  "publishingPasswordHashSalt": null,
+  "publishingUserName": "fstdeployer",
+  "type": "Microsoft.Web/publishingUsers/web",
+  "userName": null
+}
+```
+
+
+```bash
+> az appservice list-locations
+```
+
+
+Create a resource group
+
+```bash
+> az group create --name fsTweetResourceGroup --location "Central US"
+```
+
+```json
+{
+  "id": "/subscriptions/910c5d17-d2c8-486a-9e6d-f09e61c89876/resourceGroups/fsTweetResourceGroup",
+  "location": "centralus",
+  "managedBy": null,
+  "name": "fsTweetResourceGroup",
+  "properties": {
+    "provisioningState": "Succeeded"
+  },
+  "tags": null
+}
+```
+
+
+Create an Azure App Service plan
+
+```bash
+> az appservice plan create --name fsTweetServicePlan --resource-group fsTweetResourceGroup --sku FREE
+```
+
+```json
+{
+  "name": "fsTweetServicePlan",
+  "provisioningState": "Succeeded",
+  "resourceGroup": "fsTweetResourceGroup",
+  "sku": {
+    ...
+    "tier": "Free"
+  },
+  "status": "Ready",
+  ...
+}
+```
+
+Create a web app
+
+```bash
+> az webapp create --name fstweet --resource-group fsTweetResourceGroup \
+  --plan fsTweetServicePlan --deployment-local-git
+```
+
+```bash
+Local git is configured with url of 
+  'https://fstdeployer@fstweet.scm.azurewebsites.net/fstweet.git'
+{
+  // a big json object
+}
+```
+
+You’ve created an empty web app, with git deployment enabled.
+
+![Empty Web App Page]
+
+```bash
+> git remote add azure \
+    https://fstdeployer@fstweet.scm.azurewebsites.net/fstweet.git
+```
+
+```bash
+> git push azure master
+Passsword for 'https://fstdeployer@fstweet.scm.azurewebsites.net': 
+```
+
+```bash
+Counting objects: 1102, done.
+Delta compression using up to 4 threads.
+....
+....
+....
+remote: ------------------------------------------------------
+remote: Build Time Report
+remote: ------------------------------------------------------
+remote: Target                             Duration
+remote: ------                             --------
+remote: Clean                              00:00:00.0018425
+remote: BuildMigrations                    00:00:01.1475457
+remote: RunMigrations                      00:00:01.9743288
+remote: VerifyLocalDbConnString            00:00:00.0035704
+remote: ReplaceLocalDbConnStringForBuild   00:00:00.0065504
+remote: Build                              00:00:45.9225862
+remote: RevertLocalDbConnStringChange      00:00:00.0060335
+remote: Views                              00:00:00.0625286
+remote: Assets                             00:00:00.0528166
+remote: CopyWebConfig                      00:00:00.0094524
+remote: Deploy                             00:00:00.9716061
+remote: Total:                             00:00:50.2883751
+remote: ------------------------------------------------------
+remote: Status:                            Ok
+remote: ------------------------------------------------------
+remote: Running post deployment command(s)...
+remote: Deployment successful.
+To https://fstweet.scm.azurewebsites.net/fstweet.git
+   f40d33c..a2a7732  master -> master
+```
