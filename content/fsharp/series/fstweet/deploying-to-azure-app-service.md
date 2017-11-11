@@ -1,8 +1,7 @@
 ---
 title: "Deploying to Azure App Service"
 date: 2017-11-08T07:11:34+05:30
-draft: true
-tags: ["FAKE", "azure"]
+tags: ["FAKE", "azure", "fsharp", "suave"]
 ---
 
 Hi There!
@@ -446,19 +445,38 @@ After creation keep a note of the App Id, Key and Secret
 ![](/img/fsharp/series/fstweet/getstream_key_and_secret.png)
 
 
+## Postmark Setup
+
+Regarding Postmark, we don't need to create a [new server](https://account.postmarkapp.com/servers) account as we are not using it in development environment. 
+
+However, we have to modify the [signup email template]({{<relref "sending-verification-email.md#configuring-signup-email-template">}}) to the use the URL of the deployed application instead of the localhost URL. 
+
+```diff
+-  http://localhost:8080/signup/verify/{{ verification_code }}
++  http://fstweet.azurewebsites.net/signup/verify/{{ verification_code }}
+```
+
+
 ## Create Azure App Service
 
-With all the dependent services are up, our next focus is creating an azure app service.
+With all the dependent services are up, our next focus is deploying the application in azure app service.
 
-Login
+To deploy the application, we are going to use [Azure CLI](https://docs.microsoft.com/en-us/cli/azure/get-started-with-azure-cli?view=azure-cli-latest). It offers an convinent way to manage azure resource easily from the command line. 
+
+Make sure, you are having this [CLI installed](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli?view=azure-cli-latest) in your machine as well as [an active Azure Subscription](https://azure.microsoft.com/en-us/free/)
+
+The first thing that we have to do is Log in to our azure account from Azure CLI. There are [multiple ways](https://docs.microsoft.com/en-us/cli/azure/authenticate-azure-cli?view=azure-cli-latest) we can log in and authenticate with the Azure CLI and here we are going to use the *Interactive log-in* option. 
+
+Run the login command and then in the web browser go the given URL and enter the provided code.
 
 ```bash
 > az login
 To sign in, use a web browser to open the page https://aka.ms/devicelogin and 
   enter the code H2ABMSZR3 to authenticate
 ```
+Then log in using the subscription that you wanted to use.
 
-![Code Prompt]
+Upon successful log in, you will get a similar JSON as the output in the command prompt.
 
 ```json
 [
@@ -476,13 +494,13 @@ To sign in, use a web browser to open the page https://aka.ms/devicelogin and
   }
 ]
 ```
+The next step is creating a [new deployment user](https://docs.microsoft.com/en-us/azure/app-service/app-service-deployment-credentials).
 
-Deployment User
+A deployment user is required for doing local git deployment to a web app.
 
 ```bash
 > az webapp deployment user set --user-name fstdeployer --password secret123
 ```
-
 ```json
 {
   "id": null,
@@ -497,21 +515,20 @@ Deployment User
 }
 ```
 
+The next thing is creating a [resource group](https://docs.microsoft.com/en-us/azure/azure-resource-manager/resource-group-overview#resource-groups) in Azure. 
 
-```bash
-> az appservice list-locations
-```
-
-
-Create a resource group
+A resource group is a logical container into which Azure resources like web apps, databases, and storage accounts are deployed and managed.
 
 ```bash
 > az group create --name fsTweetResourceGroup --location "Central US"
 ```
 
+> You can get a list of all the locations available using the `az appservice list-locations` command
+
+
 ```json
 {
-  "id": "/subscriptions/910c5d17-d2c8-486a-9e6d-f09e61c89876/resourceGroups/fsTweetResourceGroup",
+  "id": "/subscriptions/{id}/resourceGroups/fsTweetResourceGroup",
   "location": "centralus",
   "managedBy": null,
   "name": "fsTweetResourceGroup",
@@ -522,13 +539,13 @@ Create a resource group
 }
 ```
 
+To host our application in Azure App Service we first need to have a [Azure App Service Plan](https://docs.microsoft.com/en-us/azure/app-service/azure-web-sites-web-hosting-plans-in-depth-overview)
 
-Create an Azure App Service plan
+Let's creates an App Service plan named `fsTweetServicePlan` in the Free pricing tier
 
 ```bash
 > az appservice plan create --name fsTweetServicePlan --resource-group fsTweetResourceGroup --sku FREE
 ```
-
 ```json
 {
   "name": "fsTweetServicePlan",
@@ -543,7 +560,7 @@ Create an Azure App Service plan
 }
 ```
 
-Create a web app
+Then using the `az webapp create` command, create a new [web app](https://docs.microsoft.com/en-us/azure/app-service/app-service-web-overview) in the App Service. 
 
 ```bash
 > az webapp create --name fstweet --resource-group fsTweetResourceGroup \
@@ -558,19 +575,52 @@ Local git is configured with url of
 }
 ```
 
-You’ve created an empty web app, with git deployment enabled.
+> The `--deployment-local-git` flag, creates a remote git directory for the web app and we will be using it to push our local git repository and deploy the changes. 
+  
+> Note down the URL of the git repository as we'll be using it shortly.
 
-![Empty Web App Page]
+We’ve created an empty web app, with git deployment enabled. If you visit the http://fstweet.azurewebsites.net/ site now, we can see an empty web app page.
+
+![Empty Web App Page](/img/fsharp/series/fstweet/azure_empty_app.png)
+
+We are just two commands away from deploying our application in Azure.
+
+The FsTweet Application uses a set of environment variables to get the application's configuration parameters (Connection string, GetStream secret, etc.,). To make these environment variables avilable for the application, we can leverage the App Settings.
+
+Open the [Azure Portal](http://portal.azure.com), Click *App Services* on the left and then click *fstweet* from the list.
+
+![Azure App Service](/img/fsharp/series/fstweet/azure_portal_app_services.png)
+
+In the *fstweet* app service dashboard, click on *Applciation Settings* and enter all the required configuration parameters and don't forget to click the *Save* button!
+
+![App Settings](/img/fsharp/series/fstweet/app_services_app_settings.png) 
+
+> We can do this using [Azure CLI appsettings](https://docs.microsoft.com/en-us/cli/azure/webapp/config/appsettings?view=azure-cli-latest#az_webapp_config_appsettings_set) command as well. 
+
+Now all set for deploying the application.
+
+Add the git URL that we get after creating the web app as [git remote](https://git-scm.com/book/en/v2/Git-Basics-Working-with-Remotes)
 
 ```bash
 > git remote add azure \
     https://fstdeployer@fstweet.scm.azurewebsites.net/fstweet.git
 ```
 
+> This command assumes that the project directory is under git version control. If you haven't done it yet, use the following commands to setup the git repository
+```bash
+> git init
+> git add -A
+> git commit -m "initial commit"
+```
+
+The last step is pushing our local git repository to the azure (alias of the remote git repository). It will prompt you to enter the password. Provide the password that we used to create the deployment user.
+
 ```bash
 > git push azure master
 Passsword for 'https://fstdeployer@fstweet.scm.azurewebsites.net': 
 ```
+
+Then sit back and watch the launch!
 
 ```bash
 Counting objects: 1102, done.
@@ -603,3 +653,21 @@ remote: Deployment successful.
 To https://fstweet.scm.azurewebsites.net/fstweet.git
    f40d33c..a2a7732  master -> master
 ```
+
+Awesome! We made it!!
+
+Now if you browse the site, we can see the beautiful landing page :)
+
+![](/img/fsharp/series/fstweet/azure_deplyed.png)
+
+After the deployment, if we want make any change, just do a git commit after making the changes and push it to the remote as we did now!
+
+If we don't want to do it manually, we can [enable contionus deployment](https://docs.microsoft.com/en-us/azure/app-service/app-service-continuous-deployment) from the azure portal.
+
+## Summary
+
+In this blog post, we have made changes to codebase to enable the deployment and deployed our application on Azure using Azure CLI. 
+
+We owe a lot of thanks to FAKE, which made our job easier. 
+
+The source code assoiciated with this blog post is available on [GitHub](https://github.com/demystifyfp/FsTweet/tree/v0.20)  
