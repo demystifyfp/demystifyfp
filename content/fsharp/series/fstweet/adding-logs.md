@@ -169,7 +169,7 @@ open Chiron
 open Logary
 ```
 
-So, we have to change the `onPublishTweetSuccess` function as below to let the compiler that we are using these types from the Chiron libary.
+So, we have to change the `onPublishTweetSuccess` function as below to let the compiler know that we are using these types from the Chiron libary.
 
 ```diff
 let onPublishTweetSuccess (TweetId id) = 
@@ -181,7 +181,125 @@ let onPublishTweetSuccess (TweetId id) =
   |> Json.ok  
 ```
 
+## The Action Side
 
+The Action side of logging involves, initialzing Logary's logger during the application bootstrap and log using it if there is any error in the request pipeline
+
+
+### Initializing Logary
+
+ A remarkable feature of Logary is its ability to support multiple targets for the log. We can conifigure it to write the log on Console, [RabbitMQ](https://www.rabbitmq.com/), [LogStash](https://www.elastic.co/products/logstash) and [much more](https://github.com/logary/logary#overview).
+
+ For our case, we are going with the simpler option, Console.
+
+```fsharp
+// src/FsTweet.Web/FsTweet.Web.fs
+// ...
+open Logary.Configuration
+open Logary
+open Logary.Targets
+
+// ...
+
+let main argv =
+  // ...
+
+  // LogaryConf -> LogaryConf
+  let target = 
+    withTarget (Console.create Console.empty "console")
+
+  // LogaryConf -> LogaryConf
+  let rule = 
+    withRule (Rule.createForTarget "console")
+
+  // LogaryConf -> LogaryConf
+  let logaryConf = 
+    target >> rule
+
+  // ...
+```
+
+* Target specifies where to log. We are using the `Console.create` factory function from the `Logary.Targets` module to create the Console target. The last argument `"console"` is the name of the target which can be any arbitary string.
+
+* The Rule specifies when to log. Here we are specifying to log for all the cases. (We can configure it to log only Fatal or Error alone)
+
+* The `logaryConf` composes the target and the rule into single configuration using the [function composition](https://fsharpforfunandprofit.com/posts/function-composition/) operator
+
+The next step is initializing the logger using this configuration.
+
+```fsharp
+// src/FsTweet.Web/FsTweet.Web.fs
+// ...
+open Hopac
+
+// ...
+
+let main argv =
+  // ...
+
+  use logary =
+    withLogaryManager "FsTweet.Web" logaryConf |> run
+
+  let logger =
+    logary.getLogger (PointName [|"Suave"|])
+
+  // ...
+```
+
+Logary uses [Hopac's Job](https://github.com/Hopac/Hopac) with [Actor model](https://en.wikipedia.org/wiki/Actor_model) behind the scenes to log the data in the Targets without the blocking the caller. You can think of this as a lightweight [Thread](https://docs.microsoft.com/en-us/dotnet/csharp/programming-guide/concepts/threading/) running parallely along with the main program. If there is anything to log, we just need to give it this Hopac Job and we can move on without waiting for it to complete. 
+
+Here we are initializing the logaryManager with a name and the configuration and asking it to `run` parallely. 
+
+Then we get a logger instance by providing the [PointName](https://github.com/logary/logary#pointname), a location where you send the log message from.
+
+### Wiring Logary With Suave
+
+The final piece that we need to work on is to check is there any error in the request pipeline and log it using the logger (that we just created) if we found one.
+
+```fsharp
+// src/FsTweet.Web/FsTweet.Web.fs
+// ...
+
+// HttpContext -> string -> 'value option
+let readUserState ctx key : 'value option =
+  ctx.userState 
+  |> Map.tryFind key 
+  |> Option.map (fun x -> x :?> 'value)
+
+// Logger -> WebPart
+let logIfError (logger : Logger) ctx = 
+  readUserState ctx "err" // Message option
+  |> Option.iter logger.logSimple // unit
+  succeed // WebPart
+
+let main argv = 
+  // ...
+```
+
+In the `readUserState` function, we are trying to find an `obj` with the provided `key` in the `userState` property of `HttpContext`. If the `obj` does exists, we are [downcasting](https://msdn.microsoft.com/en-us/visualfsharpdocs/conceptual/casting-and-conversions-%5Bfsharp%5D) it to a generic type `'value`.  
+
+The `logIfError` function, takes an instance of `Logger` and uses `readUserState` function to find the error log Message and log it using the `logSimple` function from Logary. The `succeed` is a in-built WebPart from Suave 
+
+The last step is wiring this `logIfError` function with the request pipeline
+
+```diff
+let main argv = 
+  ...
+  let logger = ...
+  ...
+  let app = ...
+  ...
+- startWebServer serverConfig app
+
++ let appWithLogger = 
++   app >=> context (logIfError logger)
+
++ startWebServer serverConfig appWithLogger
+```
+
+Awesome. The action to perform the actual logging is completely de-coupled!
+
+Now if we run the application, and post a tweet with internet connection down, we get the following log
 
 ```bash
 E 2017-11-11T16:57:30.7999800+00:00: Tweet Notification Error [Suave]
@@ -198,7 +316,12 @@ E 2017-11-11T16:57:30.7999800+00:00: Tweet Notification Error [Suave]
   userId => 22
 ```
 
-```bash
-> forge paket add Logary.Targets.SumoLogic \
-    -p src/FsTweet.Web/FsTweet.Web.fsproj
-```
+Better and actionable log, isn't it?
+
+## Summary
+
+We just scratched the surface of the Logary libary in this blog post and we can make the logs even more robust by leveraging other features from the Logary's kitty. 
+
+Apart from Logary, An another take away is how we sepearated the communication and action aspects of logging. This separation enabled us to perform the logging outside of the business domain (at the edge of the application boundary) and we didn't passed the logger as a dependency from `main` function to the downstream `webpart` functions. 
+
+The source code associated with this blog post is available on [GitHub](https://github.com/demystifyfp/FsTweet/tree/v0.21)
