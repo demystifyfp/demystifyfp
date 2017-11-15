@@ -6,7 +6,7 @@ tags: [suave, authentication, fsharp]
 
 Hi!
 
-Welcome back to the fifteenth part of [Creating a Twitter Clone in F# using Suave](TODO) blog post series. 
+Welcome back to the fifteenth part of [Creating a Twitter Clone in F# using Suave]({{< relref "intro.md">}}) blog post series. 
 
 In the [previous blog post]({{< relref "handling-login-request.md" >}}), we have implemented the backend logic to verify the login credentials of a user. Upon successful verification of the provided credentials, we just responded with a username. 
 

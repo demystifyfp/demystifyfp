@@ -6,7 +6,7 @@ tags : [suave, SQLProvider, fsharp, chessie, getstream]
 
 Hello!
 
-We are on our way to complete the blog post series on [Creating a Twitter Clone in F# using Suave](TODO). 
+We are on our way to complete the blog post series on [Creating a Twitter Clone in F# using Suave]({{< relref "intro.md">}}). 
 
 In this nineteenth part, we are going to implement the core feature of Twitter, Following other users and viewing their tweets on his/her wall page.  
 

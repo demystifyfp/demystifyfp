@@ -6,7 +6,7 @@ tags: [suave, DotLiquid, fsharp, forge]
 
 Hi,
 
-Welcome to the second part of [Creating a Twitter Clone in F# using Suave](TODO) series. 
+Welcome to the second part of [Creating a Twitter Clone in F# using Suave]({{< relref "intro.md">}}) series. 
 
 In this post, we are going to extend our `FsTweet` app to render `Hello, World!` as HTML document from the server side using [DotLiquid](http://dotliquidmarkup.org/)
 

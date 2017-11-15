@@ -6,7 +6,7 @@ tags: [fsharp, suave, chiron, chessie, rop, FluentMigrator]
 
 Hi there!
 
-In this sixteenth part of [Creating a Twitter Clone in F# using Suave](TODO) blog post series, we are going to implement core feature of Twitter, posting a tweet. 
+In this sixteenth part of [Creating a Twitter Clone in F# using Suave]({{< relref "intro.md">}}) blog post series, we are going to implement core feature of Twitter, posting a tweet. 
 
 Let's dive in!
 

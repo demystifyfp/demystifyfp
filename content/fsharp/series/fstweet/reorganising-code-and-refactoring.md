@@ -6,7 +6,7 @@ tags: [fsharp, refactoring, Chessie]
 
 Hi there!
 
-Welcome to the twelfth part of [Creating a Twitter Clone in F# using Suave](TODO) blog post series. 
+Welcome to the twelfth part of [Creating a Twitter Clone in F# using Suave]({{< relref "intro.md">}}) blog post series. 
 
 We have come a long way so far, and we have lot more things to do! 
 

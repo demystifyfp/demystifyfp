@@ -6,7 +6,7 @@ tags: [suave, fsharp, FAKE]
 
 Hi,
 
-Welcome to the third part of the [Creating a Twitter Clone in F# using Suave](TODO) blog post series.
+Welcome to the third part of the [Creating a Twitter Clone in F# using Suave]({{< relref "intro.md">}}) blog post series.
 
 In this post, we will be changing the guest homepage from displaying `Hello, World!` to a production ready landing page!
 

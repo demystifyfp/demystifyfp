@@ -6,7 +6,7 @@ tags: [fsharp, Postmark, Chessie, rop]
 
 Hi there!
 
-Welcome to the tenth part of [Creating a Twitter Clone in F# using Suave](TODO) blog post series. 
+Welcome to the tenth part of [Creating a Twitter Clone in F# using Suave]({{< relref "intro.md">}}) blog post series. 
 
 In this blog post, we are going to add support for sending an email to verify the email address of a new signup, which we [faked earlier]({{< relref "transforming-async-result-to-webpart.md#adding-fake-implementations-for-persistence-and-email" >}}). 
 

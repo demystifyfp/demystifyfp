@@ -6,7 +6,7 @@ tags: [forge,FAKE,paket,fsharp]
 
 Hi,
 
-In this first part of the series on [Creating a Twitter Clone in F# using Suave](TODO), we will be starting the project from scratch and configuring it to use [FAKE](https://fake.build/) and [Paket](https://fsprojects.github.io/Paket/)
+In this first part of the series on [Creating a Twitter Clone in F# using Suave]({{< relref "intro.md">}}), we will be starting the project from scratch and configuring it to use [FAKE](https://fake.build/) and [Paket](https://fsprojects.github.io/Paket/)
 
 
 Let's get started by creating an empty directory with the name *FsTweet*
@@ -34,7 +34,7 @@ This will download the *paket.exe* in the *.paket* directory along with *paket.d
 
  To [restrict paket](https://fsprojects.github.io/Paket/dependencies-file.html#Framework-restrictions) to use the .NET Framework 4.6.1 version, we need to add, `framework: net461` in a new line in the *paket.dependencies* file.
 
-If you prefer to do this from your bash, you can achieve it using the following command
+If you prefer to do this from your command line interface, you can achieve it using the following command
 
 ```
 > echo 'framework: net461' >> paket.dependencies
@@ -82,6 +82,7 @@ When you run it,
 It will start the Suave standalone web server on port `8080`.
 
 ```bash
+...
 [21:42:45 INF] Smooth! Suave listener started in 138.226 with binding 127.0.0.1:8080
 ```
 

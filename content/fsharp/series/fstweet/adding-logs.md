@@ -8,7 +8,7 @@ Hi!
 
 Welcome Back!!
 
-In this twenty second part of [Creating a Twitter Clone in F# using Suave](TODO) blog post series, we are going to improve how we are logging the exceptions in FsTweet. 
+In this twenty second part of [Creating a Twitter Clone in F# using Suave]({{< relref "intro.md">}}) blog post series, we are going to improve how we are logging the exceptions in FsTweet. 
 
 
 ## What's Wrong With Current Logic

@@ -56,6 +56,10 @@ If we had this alias beforehand, we could have used the following commands to do
 forge {operation-alias} {project-alias} {other-arguments}
 ```
 
+> We are going to use Forge to learn how to develop and manage F# projects agonistic of any editors. 
+
+> If you feel some of the things like, adding a new file, moving the file up/down, etc., are better using your favorite IDE/editor, you can ignore those steps and use the equivalent options provided by it.
+
 ## Serving User Signup Page
 
 The first step is to serve the user signup page in response to the `/signup` request from the browser. 

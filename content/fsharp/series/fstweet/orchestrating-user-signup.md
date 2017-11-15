@@ -6,7 +6,7 @@ tags: [Chessie, rop, fsharp]
 
 Hi,
 
-Welcome back to the seventh part of [Creating a Twitter Clone in F# using Suave](TODO) blog post series.
+Welcome back to the seventh part of [Creating a Twitter Clone in F# using Suave]({{< relref "intro.md">}}) blog post series.
 
 In this part, we will be orchestrating the user signup use case. 
 

@@ -6,7 +6,7 @@ tags: [suave, chessie, rop,fsharp]
 
 Hi,
 
-Welcome to the fifth part of the [Creating a Twitter Clone in F# using Suave](TODO) blog post series.
+Welcome to the fifth part of the [Creating a Twitter Clone in F# using Suave]({{< relref "intro.md">}}) blog post series.
 
 In the [previous blog post]({{< relref "user-signup.md" >}}), we created the server side representation of the user submitted details. The next step is validating this view model against a set of constraints before persisting them in a data store. 
 

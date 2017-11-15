@@ -6,7 +6,7 @@ tags : [suave, DotLiquid, fsharp, chessie, getstream]
 
 Hi there!
 
-Welcome back to the eighteenth part of [Creating a Twitter Clone in F# using Suave](TODO) blog post series. 
+Welcome back to the eighteenth part of [Creating a Twitter Clone in F# using Suave]({{< relref "intro.md">}}) blog post series. 
 
 We are on the verge of completing the initial version of FsTweet. To say FsTweet as a Twitter clone, we should be able to follow other users and view their tweets in our wall page. To do it, we first need to have a user profile page where we can go and follow the user. 
 

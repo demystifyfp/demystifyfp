@@ -6,7 +6,7 @@ tags: ["FAKE", "azure", "fsharp", "suave"]
 
 Hi There!
 
-It's great to see you back in the twenty first part of [Creating a Twitter Clone in F# using Suave](TODO) blog post series. 
+It's great to see you back in the twenty first part of [Creating a Twitter Clone in F# using Suave]({{< relref "intro.md">}}) blog post series. 
 
 In this blog post, we are going to prepare our code for deployment and we'll be deploying our FsTweet Application in Azure using [Azure App Service](https://azure.microsoft.com/en-in/services/app-service/)
 

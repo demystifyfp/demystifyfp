@@ -8,7 +8,7 @@ Hi,
 
 Thank you for joining me in the quest of developing a real world application using functional programming principles in F#. I belived it has added value to you. 
 
-Let's have a quick recap what we have done so far and discuss the journey ahead before we wrap up [this blog post series](TODO). 
+Let's have a quick recap what we have done so far and discuss the journey ahead before we wrap up [this blog post series]({{< relref "intro.md">}}). 
 
 
 ## Code Organization

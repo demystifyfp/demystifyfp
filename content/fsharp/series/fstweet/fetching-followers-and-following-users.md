@@ -6,7 +6,7 @@ tags: [suave, SQLProvider, chiron, rop, fsharp, chessie]
 
 Hi,
 
-Welcome back to the twentieth part of [Creating a Twitter Clone in F# using Suave](TODO) blog post series. 
+Welcome back to the twentieth part of [Creating a Twitter Clone in F# using Suave]({{< relref "intro.md">}}) blog post series. 
 
 In this blog post, we are going to expose two HTTP JSON endpoints to fetch the list of followers and following users. Then we will be updating the user profile page front-end to consume these APIs and populate the *Following* and *Followers* Tabs.
 
