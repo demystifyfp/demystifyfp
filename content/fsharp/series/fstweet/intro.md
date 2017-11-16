@@ -20,7 +20,7 @@ In this series we will be starting from the scratch (right from creating an empt
 
 Overall, It's going to be lot of fun! Let's start our journey.
 
-{{% toc %}}
+## Table of Contents
 
 * [Setting Up FsTweet Project]({{<relref "project-setup.md">}})
 * [Setting Up Server Side Rendering using DotLiquid]({{<relref "dotliquid-setup.md">}})
@@ -45,3 +45,10 @@ Overall, It's going to be lot of fun! Let's start our journey.
 * [Deploying to Azure App Service]({{<relref "deploying-to-azure-app-service.md">}})
 * [Adding Logs using Logary]({{<relref "adding-logs.md">}})
 * [Wrapping Up]({{<relref "wrapping-up.md">}})
+
+
+## Acknowledgement
+
+This entire series was initially planned to be released as a video course in [FSharp.TV](https://fsharp.tv/) after my [Build a Web Server based on Suave](https://www.udemy.com/learn-suave/?couponCode=DEMYSTIFY_FP) course. Due to some personal reasons, we couldn't complete it. Thank you [Mark](https://twitter.com/MarkRGray) for the courteous support to release the course as a blog series and book. 
+
+I'd like to thank the entire [F# Community](http://fsharp.org/) for their open source contributions, support and thought provoking blog posts, articles and tutorials.  
