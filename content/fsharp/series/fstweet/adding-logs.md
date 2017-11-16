@@ -327,3 +327,5 @@ Apart from Logary, An another take away is how we sepearated the communication a
 The source code associated with this blog post is available on [GitHub](https://github.com/demystifyfp/FsTweet/tree/v0.21)
 
 ### Next Part
+
+[Wrapping Up]({{<relref "wrapping-up.md">}})
