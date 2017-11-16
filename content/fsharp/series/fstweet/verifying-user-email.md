@@ -386,6 +386,10 @@ I hope you found it useful and learned how to put the pieces together to build f
 
 The source code of this part can be found on [GitHub](https://github.com/demystifyfp/FsTweet/tree/v0.10)
 
+### Next Part
+
+[Reorganising Code and Refactoring]({{<relref "reorganising-code-and-refactoring.md">}})
+
 ## Exercise
 
 How about sending a welcome email to the user upon successful verification of his/her email?

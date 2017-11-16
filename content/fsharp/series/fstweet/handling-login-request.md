@@ -642,3 +642,7 @@ That's it!
 We covered a lot of ground in this blog post. We started with finding the user by username and then we moved to implement the login function. And finally, we transformed the result of the login function to the corresponding webparts. 
 
 The source code of this blog post is available [here](https://github.com/demystifyfp/FsTweet/releases/tag/v0.13).
+
+### Next Part
+
+[Creating User Session and Authenticating User]({{<relref "creating-user-session-and-authenticating-user.md">}})

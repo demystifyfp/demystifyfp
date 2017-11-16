@@ -391,3 +391,7 @@ As we saw in other posts, we are just doing transformations to achieve what we w
 With this, we are done with all the features that will be part of this initial version of FsTweet. In the upcoming posts, we are going to add support for logging and learn how to deploy it to Azure.
 
 As usual, the source code of this blog post is available on [GitHub](https://github.com/demystifyfp/FsTweet/tree/v0.19).
+
+### Next Part
+
+[Deploying to Azure App Service]({{<relref "deploying-to-azure-app-service.md">}})

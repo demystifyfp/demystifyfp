@@ -400,3 +400,7 @@ In this blog post, we learned how to do authentication in Suave and manage state
 1. Instead of storing the user information in a cookie, store and retrieve it from a new table in the PostgreSQL database. You can get the session id from the auth cookie by using the `HttpContext.sessionId` function in the `Suave.Authentication` module. 
 
 2. Suave supports cookies with sliding expiry. Replace the `CookieLife.Session` with `CookieLife.MaxAge` and implement sliding expiry.  
+
+### Next Part
+
+[Posting New Tweet]({{<relref "posting-new-tweet.md">}})

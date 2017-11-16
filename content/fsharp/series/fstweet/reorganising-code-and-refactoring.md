@@ -442,3 +442,5 @@ module Suave =
 In this blog post, we learned how to create adapter functions and override a functionality provided by a library to fit our requirements. The key to this refactoring is the understanding of the function signatures.
 
 The source code associated with this blog post is available on [GitHub](https://github.com/demystifyfp/FsTweet/tree/v0.11)
+
+### Next Part

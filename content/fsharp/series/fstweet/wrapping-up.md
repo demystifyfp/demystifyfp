@@ -49,8 +49,7 @@ Then for each business use case, the presentation layer Suave's `webpart` functi
 
 There are other patterns like [Free Monad](http://blog.ploeh.dk/2017/08/07/f-free-monad-recipe/) and [Reader Monad](https://www.youtube.com/watch?v=xPlsVVaMoB0) to solve this in a different way. For our use case, the approach that we used helped us to get the job done without any complexties. 
 
-<blockquote class="twitter-tweet" data-lang="en-gb"><p lang="en" dir="ltr">The free monad series by <a href="https://twitter.com/ploeh?ref_src=twsrc%5Etfw">@ploeh</a> is excellent. Still, I think free monads, esp. in F#, are solving a non-problem in overly complicated way.</p>&mdash; Tomas Petricek (@tomaspetricek) <a href="https://twitter.com/tomaspetricek/status/892037756041523204?ref_src=twsrc%5Etfw">31 July 2017</a></blockquote>
-<script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+{{< tweet 892037756041523204 >}}
 
 Being said that, the context always wins. For the application that we took, it made sense. The Free Monad and Reader Monad approaches suit well for certain kind of problems. Hence, my recommendation would be, learn all the approaches, pick the one that suits your project and [keep it simple](https://www.infoq.com/presentations/Simple-Made-Easy). 
 
@@ -60,7 +59,7 @@ I encourage you to try Free Monad and Reader Monad apporaches with the FsTweet c
 
 There are lot of ways, we can modify/extend/play with FsTweet. 
 
-* Replacing Suave with [Freya](https://freya.io/), [Girafee](https://github.com/dustinmoris/Giraffe), [ASP.NET Core](https://docs.microsoft.com/en-us/aspnet/core/) 
+* Replacing Suave with [Freya](https://freya.io/) or [Girafee](https://github.com/dustinmoris/Giraffe) or [ASP.NET Core](https://docs.microsoft.com/en-us/aspnet/core/) 
 
 * Replacing SQLProvider with [Rezoom.SQL](https://github.com/rspeele/Rezoom.SQL) or [Entity Framework](https://docs.microsoft.com/en-us/ef/core/)
 

@@ -325,3 +325,5 @@ We just scratched the surface of the Logary libary in this blog post and we can 
 Apart from Logary, An another take away is how we sepearated the communication and action aspects of logging. This separation enabled us to perform the logging outside of the business domain (at the edge of the application boundary) and we didn't passed the logger as a dependency from `main` function to the downstream `webpart` functions. 
 
 The source code associated with this blog post is available on [GitHub](https://github.com/demystifyfp/FsTweet/tree/v0.21)
+
+### Next Part

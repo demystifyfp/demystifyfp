@@ -6,7 +6,7 @@ tags: [suave, chessie, rop,fsharp]
 
 Hi!
 
-Welcome back to the thirteenth part of [Creating a Twitter Clone in F# using Suave](TODO) blog post series. 
+Welcome back to the thirteenth part of [Creating a Twitter Clone in F# using Suave]({{< relref "intro.md">}}) blog post series. 
 
 In this blog post, we are going to start the implementation of a new feature, enabling users to log in to FsTweet. 
 
@@ -259,3 +259,7 @@ For a valid login request, we need to implement the actual behavior. Let's leave
 In this blog post, we added implementations for rending the login page. Then we added functions to handle and validate the login request from the user. 
 
 The source code is available in the [GitHub repository](https://github.com/demystifyfp/FsTweet/tree/v0.12) 
+
+### Next Part
+
+[Handling Login Request]({{<relref "handling-login-request.md">}})

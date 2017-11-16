@@ -141,4 +141,8 @@ let serveAssets =
 
 ## Summary
 
-In this blog post, we learned how to serve static asset files in Suave. The source code can be found in the [GitHub repository](https://github.com/demystifyfp/FsTweet/tree/v0.2) 
+In this blog post, we learned how to serve static asset files in Suave. The source code can be found in the [GitHub repository](https://github.com/demystifyfp/FsTweet/tree/v0.2)
+
+### Next Part
+
+[Handling User signup Form]({{<relref "user-signup.md">}}) 

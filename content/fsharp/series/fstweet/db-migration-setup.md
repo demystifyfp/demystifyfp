@@ -260,3 +260,7 @@ That's it!
 In this blog post, we learned how to set up database migration using Fluent Migrator in fsharp and leverage FAKE to run the migrations while running the build script.
 
 The source code for this blog post is available on [GitHub](https://github.com/demystifyfp/FsTweet/tree/v0.5)
+
+### Next Part
+
+[Orchestrating User Signup]({{<relref "orchestrating-user-signup.md">}})

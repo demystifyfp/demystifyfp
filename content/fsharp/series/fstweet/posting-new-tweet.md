@@ -859,3 +859,7 @@ In this blog post, we saw how to expose JSON HTTP endpoints in Suave and also le
 
 The source code associated with this blog post is available on [GitHub](https://github.com/demystifyfp/FsTweet/tree/v0.15)
 
+
+### Next Part
+
+[Adding User Feed]({{<relref "adding-user-feed.md">}})

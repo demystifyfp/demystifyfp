@@ -267,3 +267,7 @@ Now if we build and run the application, we will be getting following console ou
 In this part, we learned how to do validation and transform view model to a domain model using the Railway Programming technique with the help of the `Chessie` library.
 
 The source code for this part is available on [GitHub](https://github.com/demystifyfp/FsTweet/tree/v0.4)
+
+### Next Part
+
+[Setting Up Database Migration]({{<relref "db-migration-setup.md">}})

@@ -328,3 +328,8 @@ let main argv =
 With the help of the abstractions and design that we created in the earlier blog posts, we can add support for sending an email with ease in the blog post. 
 
 The source code of this blog post is available on [GitHub](https://github.com/demystifyfp/FsTweet/tree/v0.9)
+
+
+### Next Part
+
+[Verifying User Email]({{<relref "verifying-user-email.md">}})

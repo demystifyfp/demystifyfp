@@ -477,3 +477,7 @@ Now if we run the app and visits a user profile, we can see his/her tweets!
 In this blog post, we implemented the user profile page with the help of the abstractions that we built earlier. Then we added the logout functionality.
 
 The source code associated with this blog post is available on [GitHub](https://github.com/demystifyfp/FsTweet/tree/v0.17)
+
+### Next Part
+
+[Following a User]({{<relref "following-a-user.md">}})

@@ -506,3 +506,7 @@ We started with initializing SQLProvider, then configured it to work with a diff
 Finally, we transformed the return type of SQLProvider to our custom Domain type! 
 
 The source code of this blog post is available on [GitHub](https://github.com/demystifyfp/FsTweet/tree/v0.8)
+
+### Next Part
+
+[Sending Verification Email]({{<relref "sending-verification-email.md">}})

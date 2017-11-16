@@ -647,3 +647,7 @@ We made it!!
 In this blog post, we learned how to integrate *GetStream.io* in FsTweet to notify the new tweets and also added the initial version of user wall.
 
 The source code of this blog post is available on [GitHub](https://github.com/demystifyfp/FsTweet/tree/v0.16)
+
+### Next Part
+
+[Adding User Profile Page]({{<relref "adding-user-profile-page.md">}})

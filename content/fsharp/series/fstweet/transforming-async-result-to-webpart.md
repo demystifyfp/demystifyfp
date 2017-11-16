@@ -449,3 +449,8 @@ In this blog post, we learned how to transform the result representation of a do
 The separation of concerns enables us to add a new Web RPC API or even replacing Suave with any other library/framework without touching the existing functionality. 
 
 The source code of this blog post is available on [GitHub](https://github.com/demystifyfp/FsTweet/tree/v0.7)
+
+
+### Next Part
+
+[Persisting New User]({{<relref "persisting-new-user.md">}})

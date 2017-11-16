@@ -168,7 +168,7 @@ defaultContentLanguageInSubdir = false
 
 [[menu.main]]
   name = "Twitter Clone in F#"
-  url = "/fsharp/series/fstweet"
+  url = "/fsharp/series/fstweet/intro"
   parent = "tutorials"
 
 # Taxonomies.

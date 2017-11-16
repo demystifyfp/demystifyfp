@@ -596,3 +596,7 @@ One of the key take away of this blog post is how we can solve a complex problem
 We also learned how to compose functions together, transforming the values using the map function to come up with a robust implementation. 
 
 The source code is available on the [GitHub Repository](https://github.com/demystifyfp/FsTweet/tree/v0.6)
+
+### Next Part
+
+[Transforming Async Result to Webpart]({{<relref "transforming-async-result-to-webpart.md">}})

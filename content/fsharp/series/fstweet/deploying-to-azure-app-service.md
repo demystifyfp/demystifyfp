@@ -671,3 +671,8 @@ In this blog post, we have made changes to codebase to enable the deployment and
 We owe a lot of thanks to FAKE, which made our job easier. 
 
 The source code assoiciated with this blog post is available on [GitHub](https://github.com/demystifyfp/FsTweet/tree/v0.20)  
+
+
+### Next Part
+
+[Adding Logs using Logary]({{<relref "adding-logs.md">}})

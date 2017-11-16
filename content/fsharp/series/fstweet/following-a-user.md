@@ -682,3 +682,7 @@ The source code of this blog post is available on [GitHub](https://github.com/de
 * It'd be great if we can get an email notification when someone follows us in FsTweet.
 
 * How about adding the support for unfollowing a user?
+
+### Next Part
+
+[Fetching Followers and Following Users]({{<relref "fetching-followers-and-following-users.md">}})
