@@ -48,7 +48,7 @@ module Domain =
 
 The `NotifyTweet` typifies a notify tweet function that takes `Tweet` and returns either `unit` or `Exception` asynchronously. 
 
-Then create a new type `PublishTweet` to represent the signature of the orchestration function with its dependencies partially applied.
+Then create a new type `PublishTweet` to represent the signature of the orchestration function with **its dependencies partially applied**.
 
 ```fsharp
 module Domain =
@@ -60,6 +60,27 @@ module Domain =
   type PublishTweet = 
     User -> Post -> AsyncResult<TweetId, PublishTweetError>
 ```
+
+> The `SignupUser` type that we defined in the [orchestrating user signup]({{< relref "orchestrating-user-signup.md#defining-the-signupuser-function-signature" >}}) blog post has the signature that contains both the dependencies and the actual parameters. As mentioned there, it was for illustration, and we haven't used it anywhere. 
+
+> Here, we are getting rid of the dependencies and using only the parameters required to specify what we want. Later in the presentation layer, we'll be using it explicitly like 
+```fsharp
+let handleNewTweet (publishTweet : PublishTweet) ... = async {
+  // ...
+  let! webpart = 		          
+    publishTweet user.UserId post
+  // ...
+``` 
+
+> In the presentation layer of user signup, the similar function has defined like 
+```fsharp
+let handleUserSignup signupUser ctx = async {
+  // ...
+}
+```
+as the `SignupUser` type has the dependencies, we can't use it explicitly.
+
+> We have used both the approaches to demonstrate the differences. 
 
 We don't have the `PublishTweetError` type defined yet. So, let's add it first. 
 
@@ -326,7 +347,7 @@ module Suave =
 +      JSON.internalError
 
 -  let handleNewTweet createTweet (user : User) ctx = async {
-+  let handleNewTweet publishTweet (user : User) ctx = async {
++  let handleNewTweet (publishTweet : PublishTweet) (user : User) ctx = async {
      ...
         let! webpart = 		         
 -          createTweet user.UserId post		 

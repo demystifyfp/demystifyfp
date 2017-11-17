@@ -263,7 +263,7 @@ type SignupUser =
       -> AsyncResult<UserId, UserSignupError>
 ```
 
-> We are not going to use this `SignupUser` type anywhere else, and it is just for illustration. 
+> We are not going to use this `SignupUser` type anywhere else, and it is just for illustration. In the later blog posts, we'll see how to make use of this kind of type aliases. 
 
 ## Implementing The SignupUser Function
 

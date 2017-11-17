@@ -283,6 +283,15 @@ This `signupUser` is a function with the signature
 UserSignupRequest -> AsyncResult<UserId, UserSignupError>
 ```
 
+> It is equivalent to the `SignupUser` type, without the dependencies
+```fsharp
+type SignupUser = 
+    CreateUser -> SendSignupEmail -> 
+      UserSignupRequest -> AsyncResult<UserId, UserSignupError>
+      
+```
+
+
 Then in the pattern matching part of the valid request, replace the placeholders (printing and redirecting) with the actual functionality
 
 ```fsharp
