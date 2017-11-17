@@ -279,7 +279,7 @@ let handleUserSignup signupUser ctx = async {
 
 This `signupUser` is a function with the signature
 
-```
+```fsharp
 UserSignupRequest -> AsyncResult<UserId, UserSignupError>
 ```
 

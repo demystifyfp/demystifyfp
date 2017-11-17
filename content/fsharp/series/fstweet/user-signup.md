@@ -170,9 +170,9 @@ If we run the application and hit `http://localhost:8080/signup` in the browser,
 
 ## Handling Signup Form POST request
 
-To handle the POST request during the signup form submission, we need to have a WebPart configured. 
+To handle the POST request during the signup form submission, we have to make some changes. 
 
-On the same path `/signup` we need to have one WebPart for serving the signup page in response to GET request and an another for the POST request. 
+For the GET request on the `/signup` path, we are serving the signup page. And for the POST request, we need a function to handle the POST request.
 
 ```fsharp
 // FsTweet.Web/UserSignup.fs
@@ -188,7 +188,102 @@ module Suave =
       ]
 ```
 
-To fill the placeholder `???`, let's add a new WebPart `handleUserSignup`, with a dummy implementation. 
+The function that we are going to write to fill the placeholder `???` has to satisfy two criteria. 
+
+1. It has to return a WebPart so that it can be composed using `>=>` operator (or infix function). 
+2. The other requirement is its interaction with the database should be asynchronous (non-blocking) otherwise it'd block the Suave Web Server. 
+
+Let's have a look at the first criteria, returning a WebPart. 
+
+In Suave, a `WebPart` is a type alias of the below function signature
+
+```fsharp
+HttpContext -> Async<HttpContext option>
+```
+
+And the signature of the `>=>` operator is 
+
+```fsharp
+HttpContext -> Async<HttpContext option> ->
+  HttpContext -> Async<HttpContext option>
+```
+
+and it can be simplified using the `WebPart` type alias as 
+
+```fsharp
+WebPart -> WebPart -> WebPart
+```
+
+With this knowledge, Let's name the function that is going to handle the user signup post request as `handleUserSignup`.
+
+```fsharp
+// HttpContext -> Async<HttpContext option>
+let handleUserSignup ctx = async {
+  printfn "%A" ctx.request.form
+  return Some ctx
+}
+```
+
+This is a naive implementation of the `handleUserSignup` which just prints the whatever value there in the request's [form type](https://suave.io/Suave.html#def:member Suave.Http.HttpRequest.form) in the console and return the HttpContext as it is. 
+
+As the signature of the `handleUserSignup` is same as that of the `WebPart`, it can be combined like 
+
+```fsharp
+POST >=> handleUserSignup
+```
+
+The second criteria for asynchronous are already satisfied as the `handleUserSignup` returns the `Async<HttpContext option>`. 
+
+To get a feel for how we will be interacting with the database in this function, let's redirect the user to the signup page again instead of returning the `HttpContext` as it is. 
+
+We can do page redirection using the [FOUND](https://suave.io/Suave.html#def:val Suave.Redirection.FOUND) function in the `Redirection` module of Suave. 
+
+The `FOUND` function takes a path (of type `string`) to redirect the browser to and returns a `WebPart`
+
+```fsharp
+string -> WebPart
+```
+
+When we expand the `WebPart` alias, it become
+
+```fsharp
+string -> HttpContext -> Async<HttpContext option>
+```
+
+Now we can say that this function takes a `string` and an `HttpContext` and asynchronously returns `HttpContext option`.
+
+
+If we are using this function in `handleUserSignup`, we need to wait for the asynchronous operation to complete and then take the return value of the `HttpContext option` and return it. 
+
+```fsharp
+let handleUserSignup ctx = async {
+  
+  printfn "%A" ctx.request.form
+
+  // HttpContext option
+  let! redirectionResponse = 
+    Redirection.FOUND "/signup" ctx
+
+  return redirectionResponse
+}
+```
+
+The [async computation expression](https://en.wikibooks.org/wiki/F_Sharp_Programming/Async_Workflows) takes care of waiting and returning the value from an asynchronous operation without blocking the main thread. 
+
+We'll be using the similar technique to perform the database operations. 
+
+The usage of `let!` and followed by `return` can be simplified using a syntactic sugar `return!` which does the both
+
+
+```fsharp
+let handleUserSignup ctx = async {
+  printfn "%A" ctx.request.form
+  return! Redirection.FOUND "/signup" ctx
+}
+```
+
+The final implementation would look like this
+
 ```fsharp
 // FsTweet.Web/UserSignup.fs
 module Suave =
@@ -205,8 +300,6 @@ module Suave =
         POST >=> handleUserSignup
       ]
 ```
-
-The placeholder implementation of the `handleUserSignup` WebPart prints the form values posted (from the [request](https://suave.io/Suave.html#def:member Suave.Http.HttpRequest.form)) in the console and redirects the user again to the signup page.
 
 When we rerun the program with this new changes, we can find the values being posted in the console upon submitting the signup form.
 
