@@ -6,19 +6,21 @@ tags: ["fsharp", "suave", "FAKE"]
 
 Hi!
 
-I'm really excited to share with you the new blog post series, Creating a Twitter Clone in F# using Suave. 
+I'm excited to share with you the new blog post series, Creating a Twitter Clone in F# using Suave. 
 
 The core objective of this series is answering the one question.
 
 How can I create a **production-ready real-world business application end to end** in F# using functional programming principles?
 
-I believe F# is one of the elegant programming language that can help developers to deliver robust softwares and add value to the businesses. 
+I believe F# is one of the elegant programming languages that can help developers to deliver robust software and add value to the businesses. 
 
 It kindles a new thought process, a better perspective for developing software products. 
 
-In this series we will be starting from the scratch (right from creating an empty directory for the project) and incrementantly add business features one at a time and wrap up with deploying to Azure. 
+In this series, we will be starting from the scratch (right from creating an empty directory for the project) and incrementally add business features one at a time and wrap up with deploying to Azure. 
 
-Overall, It's going to be lot of fun! Let's start our journey.
+Overall, It's going to be a lot of fun! 
+
+Let's start our journey.
 
 ## Table of Contents
 
@@ -49,6 +51,6 @@ Overall, It's going to be lot of fun! Let's start our journey.
 
 ## Acknowledgement
 
-This entire series was initially planned to be released as a video course in [FSharp.TV](https://fsharp.tv/) after my [Build a Web Server based on Suave](https://www.udemy.com/learn-suave/?couponCode=DEMYSTIFY_FP) course. Due to some personal reasons, we couldn't complete it. Thank you [Mark](https://twitter.com/MarkRGray) for the courteous support to release the course as a blog series and book. 
+This entire series was initially planned to be released as a video course in [FSharp.TV](https://fsharp.tv/) after my [Build a Web Server based on Suave](https://www.udemy.com/learn-suave/?couponCode=DEMYSTIFY_FP) course. Due to some personal reasons, we couldn't complete it. Thank you, [Mark](https://twitter.com/MarkRGray), for the courteous support to release the course as a blog series and book. 
 
-I'd like to thank the entire [F# Community](http://fsharp.org/) for their open source contributions, support and thought provoking blog posts, articles and tutorials.  
+I'd like to thank the entire [F# Community](http://fsharp.org/) for their open source contributions, support, and thought-provoking blog posts, articles, and tutorials.  
