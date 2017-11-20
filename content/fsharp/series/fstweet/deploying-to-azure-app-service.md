@@ -8,7 +8,7 @@ Hi There!
 
 It's great to see you back in the twenty-first part of [Creating a Twitter Clone in F# using Suave]({{< relref "intro.md">}}) blog post series. 
 
-In this blog post, we are going to prepare our code for deployment, and we'll be deploying our FsTweet Application in Azure using [Azure App Service](https://azure.microsoft.com/en-in/services/app-service/).
+In this blog post, we are going to prepare our code for deployment, and we'll be deploying our FsTweet Application on Azure using [Azure App Service](https://azure.microsoft.com/en-in/services/app-service/).
 
 Let's dive in.
 
@@ -67,7 +67,7 @@ Before arriving at the solution, Let's think about what would be an ideal scenar
 
 The first step is manual, and our FAKE build script is already taking care of rest of the steps.
 
-> We'll be adding a separate step in our build script to run the application on cloud. 
+> Later in this blog post, We'll be adding a separate step in our build script to deploy the application on cloud. 
 
 To make this ideal scenario work, we need an intermediate step between three and four, which takes the connection string from the environment variable and replaces the connection string literal in *Db.fs* with this one. After successful compilation, we need to revert this change. 
 
@@ -659,7 +659,7 @@ Now if you browse the site, we can see the beautiful landing page :)
 
 ![](/img/fsharp/series/fstweet/azure_deplyed.png)
 
-After the deployment, if we want to make any change, just do a git commit after making the changes and push it to the remote as we did now!
+Post deployment, if we want to make any change, just do a git commit. After making the changes and push it to the remote as we did now!
 
 If we don't want to do it manually, we can [enable continuous deployment](https://docs.microsoft.com/en-us/azure/app-service/app-service-continuous-deployment) from the Azure portal.
 
