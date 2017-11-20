@@ -1,7 +1,7 @@
 ---
 title: "Wrapping Up"
 date: 2017-11-14T06:42:51+05:30
-draft: true
+tags: ["fsharp", "suave"]
 ---
 
 Hi,
