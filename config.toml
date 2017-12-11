@@ -24,7 +24,6 @@ defaultContentLanguageInSubdir = false
   organization = "Functional Programming"
   organization_url = ""
   gravatar = true  # Get your avatar from Gravatar.com? (true/false)
-  avatar = "portrait.jpg"  # Specify an avatar image (in `static/img/` folder) or delete value to disable avatar.
   email = "demystifyfp@gmail.com"
   address = ""
   office_hours = ""
@@ -161,15 +160,15 @@ defaultContentLanguageInSubdir = false
   parent = "books"
 
 [[menu.main]]
-  name = "Tutorials"
-  url = "#tutorials"
-  identifier = "tutorials"
+  name = "Courses"
+  url = "#courses"
+  identifier = "courses"
   weight = 3
 
 [[menu.main]]
-  name = "Twitter Clone in F#"
-  url = "/fsharp/series/fstweet/intro"
-  parent = "tutorials"
+  name = "MiniSuave in F#"
+  url = "https://www.udemy.com/learn-suave/?couponCode=DEMYSTIFY_FP"
+  parent = "courses"
 
 # Taxonomies.
 [taxonomies]
