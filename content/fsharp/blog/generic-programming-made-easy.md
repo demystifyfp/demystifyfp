@@ -55,7 +55,7 @@ let rec print (value : obj) =
   // ...
 ```
 
-F# is not known for these kind of problems. There should be a better way!
+Like this piece of code, we may need to write some more ugly and hard to maintain code, if we do some advanced reflection. F# is not known for these kind of problems. There should be a better way!
 
 Yes, That's where [TypeShape](https://github.com/eiriktsarpalis/TypeShape) comes into picture. 
 
@@ -65,7 +65,7 @@ In this blog post, we are going to learn the basics of the TypeShape library by 
 
 > This blog post is a part of the [F# Advent Calendar 2017](https://sergeytihon.com/2017/10/22/f-advent-calendar-in-english-2017/). 
 
-## The Use Case
+## The Use Cases
 
 Reading a value from an environment variable and converting the readed value to a different target type (from `string` type) to consume it is a boilerplate code. 
 
@@ -142,7 +142,7 @@ Then download this dependency by running the paket's `install` command.
 > forge paket install
 ```
 
-After successful execution of this command, you find the *TypeShape.fs* file in the *./paket-files/eiriktsarpalis/TypeShape/src/TypeShape* directory. 
+After successful execution of this command, we can find the *TypeShape.fs* file in the *./paket-files/eiriktsarpalis/TypeShape/src/TypeShape* directory. 
 
 The last step is creating a F# script file *script.fsx* and refer this *TypeShape.fs* file 
 
@@ -183,7 +183,7 @@ Let's get started by defining the scaffolding for our `parsePrimitive` function.
 ```fsharp
 // string -> EnvVarParseResult<'T>
 let parsePrimitive<'T> (envVarName : string) : EnvVarParseResult<'T> =
-  NotSupported "unknown target type"
+  NotSupported "unknown target type" |> Error
 ```
 
 As we are not supporting any type to begin with, we are just returning the `NotSupported` error. 
@@ -200,15 +200,15 @@ TypeShape library comes with a set of active patters to match shapes of the data
  ```fsharp
 let parsePrimitive<'T> (envVarName : string) : EnvVarParseResult<'T> =
   match shapeof<'T> with
-  | Shape.Int32 -> NotSupported "integer"
-  | Shape.String -> NotSupported "string"
-  | Shape.Bool -> NotSupported "bool"
-  | _ -> NotSupported "unknown target type"
+  | Shape.Int32 -> NotSupported "integer" |> Error
+  | Shape.String -> NotSupported "string" |> Error
+  | Shape.Bool -> NotSupported "bool" |> Error
+  | _ -> NotSupported "unknown target type" |> Error
 ```
 
 The `shapeof<'T>` returns the `TypeShape` of the provide generic type `'T`.
 
-If you execute this function in F# interactive, you will be getting the following outputs
+If we execute this function in F# interactive, we will be getting the following outputs
 
 ```bash
 > parsePrimitive<int> "TEST";;
@@ -388,6 +388,114 @@ Awesome! We acheived the milestone number one!!
 
 ## Use Case #2 - Parsing Record Types
 
+Like what we did for the `parsePrimitive` function, let's start with a scaffolding for parsing record types
+
+```fsharp
+// unit -> EnvVarParseResult<'T>
+let parseRecord<'T> () =
+  NotSupported "non record type found" |> Error
+```
+
+The first step towards our final outcome is matching the data type with the `Shape.FSharpRecord`
+
+```fsharp
+let parseRecord<'T> () =
+  match shapeof<'T> with
+  | Shape.FSharpRecord (:? ShapeFSharpRecord<'T> as shape) ->
+    NotSupported "record type support just started" |> Error
+  | _ -> NotSupported "non record type found" |> Error
+```
+
+We are doing two things here to pattern match the record type, first we are matching whether the shape of the provided type `'T` is of shape `Shape.FSharpRecord` and whether it can be casted to TypeShape's F# Record representation `ShapeFSharpRecord<'T>`. If both these checks are through, we returning the `NotSupported` error with a friendly message. 
+
+To verify this, Let's create a new record type `Config`.
+
+```fsharp
+type Config = {
+  ConnectionString : string
+  Port : int
+  EnableDebug : bool
+  Environment : string
+}
+```
+The four fields of this `Config` is going to be populated from their corresponding environment variables in the upcoming steps;
+
+
+If we try the `parseRecord` with the `Config` type, we will get the error message as expected. 
+
+```bash
+> parseRecord<Config> ();;
+[<Struct>]
+val it : EnvVarParseResult<Config> =
+  Error (NotSupported "record type support just started")
+```
+
+### Environment Variable Names of Record fields
+
+Great, now we are able to get the recognize the record types. The next step is getting all the field names of the provided record type. 
+
+We can get that using the `Fields` field of the `ShapeFSharpRecord<'T>` type. 
+
+```fsharp
+let parseRecord<'T> () =
+  match shapeof<'T> with
+  | Shape.FSharpRecord (:? ShapeFSharpRecord<'T> as shape) ->
+    shape.Fields |> Seq.iter (fun field -> printfn "%s" field.Label)
+    NotSupported "record type support just started" |> Error
+  | _ -> NotSupported "non record type found" |> Error
+```
+
+```bash
+> parseRecord<Config> ();;
+ConnectionString
+Port
+EnableDebug
+Environment
+val it : EnvVarParseError = ...
+```
+
+The next step transforming these field names to its corresponding environment variable names. A typical environment variable name convention is an upper case string with multiple words separated by underscore. For example, `CONNECTION_STRING` would be environment variable name from which we need to retrieve the value of the `ConnectionString` field of `Config` type. 
+
+```fsharp
+// ...
+open System.Text.RegularExpressions
+// ...
+
+let envVarNameRegEx = 
+  Regex("([^A-Z]+|[A-Z][^A-Z]+|[A-Z]+)", RegexOptions.Compiled)
+
+let canonicalizeEnvVarName name =
+  let subStrings =
+    envVarNameRegEx.Matches name
+    |> Seq.cast
+    |> Seq.map (fun (m : Match) -> m.Value.ToUpperInvariant())
+    |> Seq.toArray
+  String.Join("_", subStrings)
+
+let parseRecord<'T> () =
+  match shapeof<'T> with
+  | Shape.FSharpRecord (:? ShapeFSharpRecord<'T> as shape) ->
+    shape.Fields 
+    |> Seq.iter (fun field -> canonicalizeEnvVarName field.Label |> printfn "%s")
+    ...
+```
+
+The `envVarNameRegEx` uses three alternatives and returns substrings which statisfy any of these alternatives. You learn more about the regular expression being used by putting the regular expression `([^A-Z]+|[A-Z][^A-Z]+|[A-Z]+)` in the *regular expression* text box in the [Regex101](https://regex101.com/) website. 
+
+The `canonicalizeEnvVarName` function gets all the matched substring of `envVarNameRegEx`, then transforms each substring to its upper case format, and then joins all of them with `_` to return it as a `string`. 
+
+Now if we try the `parseRecord` again, we can see environment variable names for all fields.
+
+```bash
+> parseRecord<Config> ();;
+CONNECTION_STRING
+PORT
+ENABLE_DEBUG
+ENVIRONMENT
+val it : EnvVarParseError = ...
+```
+
+To use the `parsePrimitive` function that we created in the previous section, we need two things, the primitive type and the environment variable name. Here we have environment variable name, the next step is figuring out the primitive type of each fields in a record type!
 
 [^1]: From [WikiPedia](https://en.wikipedia.org/wiki/Generic_programming)
 [^2]: Copied From Eirik Tsarpalis's [Slide](http://eiriktsarpalis.github.io/typeshape/#/12)
