@@ -116,5 +116,279 @@ It's even more awesome!!
 
 Let's dive in and implement these two usecases.
 
+## Use Case #1 - Parsing Primitives
+
+### Setting Up
+
+As we will be implementing the use cases by exploring the TypeShape library, F# scripting would be a good fit to get it done. So, let's start with an empty directory and initialize [paket](https://fsprojects.github.io/Paket) using [Forge](https://github.com/fsharp-editing/Forge).
+
+```bash
+> mkdir FsEnvConfig
+> cd FsEnvConfig
+> forge paket init
+```
+
+The next step is adding the TypeLibrary and referencing it in the script file.
+
+The entire TypeShape library is available as a single file in GitHub and using Paket's [GitHub File Reference](TODO), we can get it for our development. To do it, first, we first need to add the reference in the *paket.dependencies* which was auto-generated during the initialization of paket. 
+
+```
+github eiriktsarpalis/TypeShape:2.20 src/TypeShape/TypeShape.fs
+```
+
+Then download this dependency by running the paket's `install` command. 
+
+```bash
+> forge paket install
+```
+
+After successful execution of this command, you find the *TypeShape.fs* file in the *./paket-files/eiriktsarpalis/TypeShape/src/TypeShape* directory. 
+
+The last step is creating a F# script file *script.fsx* and refer this *TypeShape.fs* file 
+
+```fsharp
+// script.fsx
+#load "./paket-files/eiriktsarpalis/TypeShape/src/TypeShape/TypeShape.fs"
+open TypeShape
+```
+
+With this the stage is now set for the action!
+
+### The Domain Types
+
+The first step is defining the types that we are going to work with
+
+```fsharp
+type EnvVarParseError =
+| BadValue of (string * string)
+| NotFound of string
+| NotSupported of string
+
+type EnvVarParseResult<'T> = Result<'T, EnvVarParseError>
+```
+
+The `EnvVarParseError` type models the possible errors that we may encounter while parsing environment variables. The cases are
+
+* `BadValue` (name , value) - Environment variable is available but casting to the target type fails  
+* `NotFound` name - Environment variable with the given name is not found
+* `NotSupported` message - We are not supporting the target datatype
+
+
+The `EnvVarParseResult<'T>` represents the final output of our parsing. It's either either success or failure with any one of the above use cases. We are making use of F# [Result Type](TODO) to model this representation. 
+
+### Getting Started
+
+Let's get started by defining the scaffolding for our `parsePrimitive` function.
+
+```fsharp
+// string -> EnvVarParseResult<'T>
+let parsePrimitive<'T> (envVarName : string) : EnvVarParseResult<'T> =
+  NotSupported "unknown target type"
+```
+
+As we are not supporting any type to begin with, we are just returning the `NotSupported` error. 
+
+The important thing to notice here is the generic type `<'T>` in the declaration. It is the target type to which we are going to convert the value stored in the provided environment name. 
+
+
+Alright, Let's take the next step towards recognizing the target data type `<'T>`.
+
+> Programs parameterized by shapes of datatypes - *Eirik Tsarpalis*
+
+TypeShape library comes with a set of active patters to match shapes of the data type. Let's assume that we are going to consider only int, string and bool for simiplicity. We can do pattern matching with the shape of these types alone in our existing `parsePrimitive` function and handle these cases as below
+
+ ```fsharp
+let parsePrimitive<'T> (envVarName : string) : EnvVarParseResult<'T> =
+  match shapeof<'T> with
+  | Shape.Int32 -> NotSupported "integer"
+  | Shape.String -> NotSupported "string"
+  | Shape.Bool -> NotSupported "bool"
+  | _ -> NotSupported "unknown target type"
+```
+
+The `shapeof<'T>` returns the `TypeShape` of the provide generic type `'T`.
+
+If you execute this function in F# interactive, you will be getting the following outputs
+
+```bash
+> parsePrimitive<int> "TEST";;
+[<Struct>]
+val it : EnvVarParseResult<int> =
+  Error (NotSupported "integer")
+
+> parsePrimitive<string> "TEST";;
+[<Struct>]
+val it : EnvVarParseResult<string> =
+  Error (NotSupported "string")
+
+> parsePrimitive<bool> "TEST";;
+[<Struct>]
+val it : EnvVarParseResult<bool> =
+  Error (NotSupported "bool")
+
+> parsePrimitive<double> "TEST";;
+[<Struct>]
+val it : EnvVarParseResult<double> =
+  Error (NotSupported "unknown target type")
+```
+
+### Parsing Environment Variable
+
+The extended `parsePrimitive` function now able to recognize the shape of the data type. The next step adding logic to parse the environment variable
+
+The `Environment.GetEnvironmentVariable` from .NET library returns `null` if the environment variable with the given name not exists. Let's write a wrapper function `getEnvVar` to return is as `None` instead of `null`. 
+
+```fsharp
+// ...
+open System
+// ...
+
+// string -> string option
+let getEnvVar name =
+  let v = Environment.GetEnvironmentVariable name
+  if v = null then None else Some v
+
+let parsePrimitive<'T> ... = ...
+```
+
+Then write the functions which use this `getEnvVar` function and parse the value (if exists) to its specific type.
+
+```fsharp
+// (string -> bool * 'a) -> name ->  EnvVarParseResult<'a>
+let tryParseWith tryParseFunc name = 
+  match getEnvVar name with
+  | None -> NotFound name |> Error
+  | Some value ->
+    match tryParseFunc value with
+    | true, v -> Ok v
+    | _ -> BadValue (name, value) |> Error
+
+
+// string -> EnvVarParseResult<int>
+let parseInt = tryParseWith Int32.TryParse
+
+// string -> EnvVarParseResult<bool>
+let parseBool = tryParseWith Boolean.TryParse
+
+// string -> EnvVarParseResult<string>
+let parseString = tryParseWith (fun s -> (true,s))
+```
+
+The `tryParseWith` function takes the `tryParseFunc` function of type  `string -> bool * 'a` as its first parameter and the environment variable name as its second parameter. If the environment variable exists, it does the parsing using the provided `tryParseFunc` function and returns either `Ok` with the parsed value or `Error` with the corresponding `EnvVarParseError` value. 
+
+The `parseInt`, `parseBool` and `parseString` functions makes use of this `tryParseWith` function by providing it's corresponding parsing functions. 
+
+### Implementing parsePrimitive function
+
+Now we have functions to parse the specific types and all we need to do now is to leverage them in the `parsePrimitive` function. 
+
+```fsharp
+// string -> EnvVarParseResult<'T>
+let parsePrimitive<'T> (envVarName : string) : EnvVarParseResult<'T> =
+  match shapeof<'T> with
+  | Shape.Int32 -> parseInt envVarName
+  | Shape.String -> parseString envVarName
+  | Shape.Bool -> parseBool envVarName
+  | _ -> NotSupported "unknown target type" |> Error
+```
+
+Here comes the compiler errors!
+
+```
+error FS0001: Type mismatch. Expecting a
+    'EnvVarParseResult<'T>'
+but given a
+    'EnvVarParseResult<int>'
+The type ''T' does not match the type 'int'
+``` 
+
+```
+All branches of a pattern match expression must have the same type. 
+This expression was expected to have type ''T', but here has type 'string'.
+```
+
+```
+All branches of a pattern match expression must have the same type. 
+This expression was expected to have type ''T', but here has type 'bool'.
+```
+
+As the compiler rightly says, we are suppose to return `EnvVarParseResult` of the provided generic target type `'T`. But we are returning `EnvVarParseResult` with specific types `int` or `bool` or `string`. 
+
+We know that these return types are right based on the pattern matching that we do on the shape of `'T` but the compiler doesn't know! It just doing its job based on the type signature that we provided
+
+```fsharp
+// string -> EnvVarParseResult<'T>
+let parsePrimitive<'T> (envVarName : string) : EnvVarParseResult<'T> = 
+  ...
+```
+
+What to do now?
+
+Well, We can solve this by introducing an another layer of abstraction[^3]
+
+```fsharp
+let parsePrimitive<'T> (envVarName : string) : EnvVarParseResult<'T> =
+
+  // (string -> 'a) -> EnvVarParseResult<'T>
+  let wrap(p : string -> 'a) = 
+    envVarName
+    |> unbox<string -> EnvVarParseResult<'T>> p 
+
+  ... 
+```
+
+The `wrap` function introduces a new generic type `'a` and accepts a function that takes a `string` and return this new generic type `'a`. Then in its function body, it uses the [unbox function](https://msdn.microsoft.com/en-us/visualfsharpdocs/conceptual/operators.unbox%5B't%5D-function-%5Bfsharp%5D) from F# standard library to unwrap the passed parameter function and call this with the given `envVarName`. 
+
+We can make of this `wrap` function to get rid of the compiler errors.
+
+Here is how the completed `parsePrimitive` function would look like 
+
+
+```fsharp
+let parsePrimitive<'T> (envVarName : string) : EnvVarParseResult<'T> =
+
+  let wrap(p : string -> 'a) = 
+    envVarName
+    |> unbox<string -> EnvVarParseResult<'T>> p 
+    
+  match shapeof<'T> with
+  | Shape.Int32 -> wrap parseInt
+  | Shape.String -> wrap parseString
+  | Shape.Bool -> wrap parseBool
+  | _ -> NotSupported "unknown target type" |> Error
+```
+
+We have solved the problem here by wrapping up the specific return types (`EnvVarParseResult<int>`, `EnvVarParseResult<string>`, `EnvVarParseResult<bool>`) to new generic type `'a` and then unboxing it using the already defined generic type `'T`. 
+
+Now the compiler is happy!
+
+Let's try this in F# interactive
+
+```bash
+> parsePrimitive<int> "PORT";;
+[<Struct>]
+val it : EnvVarParseResult<int> = Error(NotFound "PORT")
+```
+
+As there is no environment variable with the name `PORT`, we are getting the `NotFound` error as expected.
+
+If we set an environment variable with the given name `PORT`, and try it again, we can see the successful parsed result!
+
+```bash
+> Environment.SetEnvironmentVariable("PORT", "5432");;
+val it : unit = ()
+
+> parsePrimitive<int> "PORT";;
+[<Struct>]
+val it : EnvVarParseResult<int> = Ok 5432
+```
+
+Awesome! We acheived the milestone number one!!
+
+
+## Use Case #2 - Parsing Record Types
+
+
 [^1]: From [WikiPedia](https://en.wikipedia.org/wiki/Generic_programming)
 [^2]: Copied From Eirik Tsarpalis's [Slide](http://eiriktsarpalis.github.io/typeshape/#/12)
+[^3]: Fundamental theorem of software engineering - [WikiPedia](Fundamental theorem of software engineering)
