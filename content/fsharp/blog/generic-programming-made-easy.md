@@ -1,7 +1,6 @@
 ---
 title: "Generic Programming Made Easy"
 date: 2017-12-11T19:39:26+05:30
-draft: true
 tags: ["fsharp", "reflection", "TypeShape", "generics"]
 ---
 
@@ -495,7 +494,180 @@ ENVIRONMENT
 val it : EnvVarParseError = ...
 ```
 
-To use the `parsePrimitive` function that we created in the previous section, we need two things, the primitive type and the environment variable name. Here we have environment variable name, the next step is figuring out the primitive type of each fields in a record type!
+To use the `parsePrimitive` function that we created in the previous section, we need two things, the primitive type and the environment variable name. Here we have environment variable name, the next step is figuring out the primitive type of each fields in the record type!
+
+### Parsing Record Fields
+
+Let's start with a initial function `parseRecordField` which is going to be called for populating the individual fields of the record type and call this from the `parseRecord` function for each fields. 
+
+```fsharp
+// parseRecordField -> string
+let private parseRecordField (shape : IShapeWriteMember<'RecordType>) = 
+  "TODO"
+```
+
+```diff
+let parseRecord<'T> () =
+  match shapeof<'T> with
+  | Shape.FSharpRecord (:? ShapeFSharpRecord<'T> as shape) ->
+    shape.Fields
+-   |> Seq.iter (fun f -> parseRecordField f |> printfn "%s")
++   |> Seq.iter (fun field -> canonicalizeEnvVarName field.Label |> printfn "%s")
+    NotSupported "record type support just started"
+  | _ -> NotSupported "non record type found"
+```
+
+> The `private` access modifier is required as the `IShapeWriteMember<'T>` is declared as `internal`. We can use `internal` instead of `private` as well.
+
+The next step is getting the type of the field from the shape and call the `parsePrimitive` function with the field type and the environment variable name that we obtained above.
+
+```fsharp
+// IShapeWriteMember<'RecordType> -> string
+let private parseRecordField (shape : IShapeWriteMember<'RecordType>) = 
+  
+  let envVarName = canonicalizeEnvVarName shape.Label
+
+  shape.Accept {
+    new IWriteMemberVisitor<'RecordType, string> with
+      member __.Visit (shape : ShapeWriteMember<'RecordType, 'FieldType>) =
+        match parsePrimitive<'FieldType> envVarName with
+        | Ok fieldValue -> 
+            sprintf "%A" fieldValue
+        | Error e -> 
+            sprintf "%A" e
+    }
+```
+
+There is a lot of things going inside the `parseRecordField` function. So, let me explain one by one. 
+
+The interface `IShapeWriteMember` has a method `Accept` with the following signature
+
+```fsharp
+IWriteMemberVisitor<'RecordType,'T> -> 'T
+```
+
+Here in the `parseRecordField` function, we are partially applying the first argument (an implementation of `IWriteMemberVisitor<'RecordType,'T>` type) and return `'T`. The [Object expression](https://fsharpforfunandprofit.com/posts/object-expressions/) which implements the `IWriteMemberVisitor` interface defines the `'T` type as `string` and hence the `parseRecordField` returns `string` in this case.
+
+The `Visit` method of the `IWriteMemberVisitor` takes care of figuring out the `FieldType` of the given shape for us. So, inside the `Visit` method we can call the `parsePrimitive` function with the provided `FieldType` and return the result as `string`. 
+
+Now if we try `parseRecord` in fsharp interactive, we will get the following output.
+
+```bash
+> parseRecord<Config> ();;
+NotFound "CONNECTION_STRING"
+NotFound "PORT"
+NotFound "ENABLE_DEBUG"
+NotFound "ENVIRONMENT"
+val it : EnvVarParseError = NotSupported "record type support just started"
+```
+
+If we set an environment variable, and try it again, we the see the success case as well!
+
+```bash
+> Environment.SetEnvironmentVariable("PORT", "5432");;
+val it : unit = ()
+
+> parseRecord<Config> ();;
+NotFound "CONNECTION_STRING"
+5432
+NotFound "ENABLE_DEBUG"
+NotFound "ENVIRONMENT"
+val it : EnvVarParseError = NotSupported "record type support just started"
+```
+
+Alright! Our next focus in populating the record field if all the corresponding environment variables are available otherwise return the list of errors. 
+
+
+### Populating Record Fields
+
+The `Inject` method of the `ShapeWriteMember` class takes a value of record type and a value of field type and changes the record's field value with the provided one via reflection. 
+
+To make use of this method, we need to have a value of the record type. As we didn't have it inside the `parseRecordField` function, instead of returing it as string, we can return a function a that takes a record value and call the `shape.Inject` inside it. 
+
+For the error case, we are just passing the error.
+
+```fsharp
+// IShapeWriteMember<'RecordType> -> 'RecordType -> EnvVarParseResult<'RecordType>
+let private parseRecordField (shape : IShapeWriteMember<'RecordType>) = 
+  let envVarName = canonicalizeEnvVarName shape.Label
+  shape.Accept {
+    new IWriteMemberVisitor<'RecordType, 
+                              'RecordType -> EnvVarParseResult<'RecordType>> with
+
+      member __.Visit (shape : ShapeWriteMember<'RecordType, 'FieldType>) =
+        match parsePrimitive<'FieldType> envVarName with
+        | Ok fieldValue ->          
+          fun record -> shape.Inject record fieldValue |> Ok
+        | Error e -> 
+          fun _ -> Error e
+    }
+```
+
+Now we have the parsing logic in place for the populating individual record fields and the one last thing that we need is to prepare an initial value of the record type and call the function returned with `parseRecordField` function with the prepared record. 
+
+In this last step, we also need to collect all the errors!
+
+```fsharp
+// 'RecordType -> EnvVarParseError list -> IShapeWriteMember<'RecordType> ->
+//     EnvVarParseError list 
+let private foldParseRecordFieldResponse record parseRecordErrors field =
+  match parseRecordField field record with
+  | Ok _ -> parseRecordErrors
+  | Error e -> e :: parseRecordErrors
+    
+// unit -> EnvVarParseResult<'T, EnvVarParseError list>
+let parseRecord<'T> () =
+  match shapeof<'T> with
+  | Shape.FSharpRecord (:? ShapeFSharpRecord<'T> as shape) ->
+  
+    let record = shape.CreateUninitialized()
+
+    let parseRecordErrors =
+      shape.Fields
+      |> Seq.fold (foldParseRecordFieldResponse record) []
+    match List.isEmpty parseRecordErrors with 
+    | true -> Ok record 
+    |_  -> Error parseRecordErrors
+  | _ -> NotSupported "non record type found" |> Error
+```
+
+Using the `CreateUninitialized` method of the `ShapeFSharpRecord` class, we are creating an initial value of the provided record type and using the [fold function](https://msdn.microsoft.com/en-us/visualfsharpdocs/conceptual/seq.fold%5B't,'state%5D-function-%5Bfsharp%5D), we are populating its individual fields using the `parseRecordField` function. 
+
+That's it!
+
+If we run the `parseRecord<'T>` without setting any environment variable, we will get the following output
+
+```bash
+> parseRecord<Config> ();;
+[<Struct>]
+val it : Result<Config,EnvVarParseError list> =
+  Error
+    [NotFound "ENVIRONMENT"; NotFound "ENABLE_DEBUG"; NotFound "PORT";
+     NotFound "CONNECTION_STRING"]
+```
+
+And if we have all the environment variables in place, we will be getting the following output
+
+```bash
+> parseRecord<Config> ();;
+[<Struct>]
+val it : Result<Config,EnvVarParseError list> =
+  Ok {ConnectionString = "Database=foobar;Password=foobaz";
+      Port = 5432;
+      EnableDebug = true;
+      Environment = "staging";}
+```
+
+Awesome! We made it!!
+
+
+## Summary
+
+In this blog post we have learned how to do generic programming involving reflection in F# using the TypeShape library. We have also learned how to build reusable abstraction in F# in an incremental fashion. 
+
+I am planning to release this as a NuGet library supporting both environment variables and application config file variables in sometime soon. Looking forward to listen to your comments to make it better. 
+
+Wish you an advanced merry christmas :christmas_tree:  and happy new 2018 :tada:
 
 [^1]: From [WikiPedia](https://en.wikipedia.org/wiki/Generic_programming)
 [^2]: Copied From Eirik Tsarpalis's [Slide](http://eiriktsarpalis.github.io/typeshape/#/12)
