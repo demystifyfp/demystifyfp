@@ -4,9 +4,9 @@ date: 2017-12-11T19:39:26+05:30
 tags: ["fsharp", "reflection", "TypeShape", "generics"]
 ---
 
-Generic programming is a style of computer programming in which algorithms are written in terms of types to-be-specified-later that are then instantiated when needed for specific types provided as parameters[^1]. Generic programming was part of .NET since .NET Version 2.0 and has an [interesting history](https://blogs.msdn.microsoft.com/dsyme/2011/03/15/netc-generics-history-some-photos-from-feb-1999/) as well!
+Generic programming is a style of computer programming in which algorithms are written in terms of types to-be-specified-later that are then instantiated when needed for specific types provided as parameters[^1]. Generic programming was part of .NET since .NET Version 2.0 and has [a fascinating history](https://blogs.msdn.microsoft.com/dsyme/2011/03/15/netc-generics-history-some-photos-from-feb-1999/) as well!
 
-For most of the use cases which involves generics, implementing them in F# is a cake-walk. However, when the generic programming involves reflection, it become a bumpy ride. Let's have a look at the source code[^2] below to get a feel of what I mean here! 
+For most of the use cases which involves generics, implementing them in F# is a cake-walk. However, when the generic programming requires reflection, it becomes a bumpy ride. Let's have a look at the source code[^2] below to get a feel of what I mean here! 
 
 ```fsharp
 let rec print (value : obj) =
@@ -29,7 +29,7 @@ let rec print (value : obj) =
         value.ToString()
 ```
 
-The above snippet returns the string representation of the parameter `value`. In the if-else-if expression, the above snippets unwraps the value from the `Option` type and `Tuple` type and return its underlying values by recursively calling the `print` function.
+This code snippet returns the string representation of the parameter `value`. The if-else-if expression unwraps the value from the `Option` type and `Tuple` type and return its underlying values by recursively calling the `print` function.
 
 ```bash
 > print (Some "John");;
@@ -39,7 +39,7 @@ val it : string = "Some John"
 val it : string = "(1, Some data)"
 ```
 
-The hard coded strings, lack of type safety are some of the concerns in the above snippet. 
+The hardcoded strings, lack of type safety are some of the concerns in the above snippet. 
 
 ```fsharp
 let rec print (value : obj) =
@@ -54,19 +54,19 @@ let rec print (value : obj) =
   // ...
 ```
 
-Like this piece of code, we may need to write some more ugly and hard to maintain code, if we do some advanced reflection. F# is not known for these kind of problems. There should be a better way!
+Like this piece of code, we may need to write some more ugly and hard to maintain code, if we do some advanced reflection. F# is not known for this kind of problems. There should be a better way!
 
-Yes, That's where [TypeShape](https://github.com/eiriktsarpalis/TypeShape) comes into picture. 
+Yes, That's where [TypeShape](https://github.com/eiriktsarpalis/TypeShape) comes into the picture. 
 
 > TypeShape is a small, extensible F# library for practical generic programming. It uses a combination of reflection, active patterns, visitor pattern and F# object expressions to minimize the amount of reflection that we need to write - Eirik Tsarpalis
 
-In this blog post, we are going to learn the basics of the TypeShape library by implementing an usecase from scratch. In this process, We are also going to learn how to build a reusable library in F# in an incremental fashion. 
+In this blog post, we are going to learn the basics of the TypeShape library by implementing an use case from scratch. In this process, We are also going to learn how to build a reusable library in F# in an incremental fashion. 
 
 > This blog post is a part of the [F# Advent Calendar 2017](https://sergeytihon.com/2017/10/22/f-advent-calendar-in-english-2017/). 
 
 ## The Use Cases
 
-Reading a value from an environment variable and converting the readed value to a different target type (from `string` type) to consume it is a boilerplate code. 
+Reading a value from an environment variable and converting the read value to a different target type (from `string` type) to consume it is a boilerplate code. 
 
 ```fsharp
 open System
@@ -91,7 +91,7 @@ val it : EnvVarParseResult<int> = Ok 5432
 
 Sounds good, isn't it?
 
-Often the applications that we develop typically reads multiple environment variables. So, How about putting them together in a record type and read all of them in a single shot?
+Often the applications that we develop typically read multiple environment variables. So, How about putting them together in a record type and read all of them in a single shot?
 
 ```fsharp
 type Config = {
@@ -111,15 +111,15 @@ val it : Result<Config,EnvVarParseError list> =
       Environment = "staging";}
 ```
 
-It's even more awesome!!
+It's even more impressive!!
 
-Let's dive in and implement these two usecases.
+Let's dive in and implement these two use cases.
 
 ## Use Case #1 - Parsing Primitives
 
 ### Setting Up
 
-As we will be implementing the use cases by exploring the TypeShape library, F# scripting would be a good fit to get it done. So, let's start with an empty directory and initialize [paket](https://fsprojects.github.io/Paket) using [Forge](https://github.com/fsharp-editing/Forge).
+As we will be implementing the use cases by exploring the TypeShape library, F# scripting would be a good fit to get it done. So, let's start with an empty directory and initialise [paket](https://fsprojects.github.io/Paket) using [Forge](https://github.com/fsharp-editing/Forge).
 
 ```bash
 > mkdir FsEnvConfig
@@ -129,7 +129,7 @@ As we will be implementing the use cases by exploring the TypeShape library, F# 
 
 The next step is adding the TypeLibrary and referencing it in the script file.
 
-The entire TypeShape library is available as a single file in GitHub and using Paket's [GitHub File Reference](TODO), we can get it for our development. To do it, first, we first need to add the reference in the *paket.dependencies* which was auto-generated during the initialization of paket. 
+The entire TypeShape library is available as a single file in GitHub, and we can get it for our development using Paket’s GitHub File Reference feature. To do it, first, we first need to add the reference in the *paket.dependencies* which was auto-generated during the initialisation of paket. 
 
 ```
 github eiriktsarpalis/TypeShape:2.20 src/TypeShape/TypeShape.fs
@@ -151,7 +151,7 @@ The last step is creating a F# script file *script.fsx* and refer this *TypeShap
 open TypeShape
 ```
 
-With this the stage is now set for the action!
+With this, the stage is now set for the action!
 
 ### The Domain Types
 
@@ -168,12 +168,12 @@ type EnvVarParseResult<'T> = Result<'T, EnvVarParseError>
 
 The `EnvVarParseError` type models the possible errors that we may encounter while parsing environment variables. The cases are
 
-* `BadValue` (name , value) - Environment variable is available but casting to the target type fails  
+* `BadValue` (name, value) - Environment variable is available but casting to the target type fails  
 * `NotFound` name - Environment variable with the given name is not found
 * `NotSupported` message - We are not supporting the target datatype
 
 
-The `EnvVarParseResult<'T>` represents the final output of our parsing. It's either either success or failure with any one of the above use cases. We are making use of F# [Result Type](TODO) to model this representation. 
+The `EnvVarParseResult<'T>` represents the final output of our parsing. It's either success or failure with any one of the above use cases. We are making use of F# [Result Type](TODO) to model this representation. 
 
 ### Getting Started
 
@@ -185,16 +185,16 @@ let parsePrimitive<'T> (envVarName : string) : EnvVarParseResult<'T> =
   NotSupported "unknown target type" |> Error
 ```
 
-As we are not supporting any type to begin with, we are just returning the `NotSupported` error. 
+As we are not supporting any type, to begin with, we are just returning the `NotSupported` error. 
 
-The important thing to notice here is the generic type `<'T>` in the declaration. It is the target type to which we are going to convert the value stored in the provided environment name. 
+The critical thing to notice here is the generic type `<'T>` in the declaration. It is the target type to which we are going to convert the value stored in the provided environment name. 
 
 
-Alright, Let's take the next step towards recognizing the target data type `<'T>`.
+Alright, Let's take the next step towards recognising the target data type `<'T>`.
 
 > Programs parameterized by shapes of datatypes - *Eirik Tsarpalis*
 
-TypeShape library comes with a set of active patters to match shapes of the data type. Let's assume that we are going to consider only int, string and bool for simiplicity. We can do pattern matching with the shape of these types alone in our existing `parsePrimitive` function and handle these cases as below
+TypeShape library comes with a set of active patterns to match shapes of the data type. Let's assume that we are going to consider only int, string and bool for simplicity. We can do pattern matching with the shape of these types alone in our existing `parsePrimitive` function and handle these cases as below
 
  ```fsharp
 let parsePrimitive<'T> (envVarName : string) : EnvVarParseResult<'T> =
@@ -233,9 +233,9 @@ val it : EnvVarParseResult<double> =
 
 ### Parsing Environment Variable
 
-The extended `parsePrimitive` function now able to recognize the shape of the data type. The next step adding logic to parse the environment variable
+The extended `parsePrimitive` function now able to recognise the shape of the data type. The next step adding logic to parse the environment variable
 
-The `Environment.GetEnvironmentVariable` from .NET library returns `null` if the environment variable with the given name not exists. Let's write a wrapper function `getEnvVar` to return is as `None` instead of `null`. 
+The `Environment.GetEnvironmentVariable` from .NET library returns `null` if the environment variable with the given name not exists. Let's write a wrapper function `getEnvVar` to return it is as `None` instead of `null`. 
 
 ```fsharp
 // ...
@@ -250,7 +250,7 @@ let getEnvVar name =
 let parsePrimitive<'T> ... = ...
 ```
 
-Then write the functions which use this `getEnvVar` function and parse the value (if exists) to its specific type.
+Then write the functions which use this `getEnvVar` function and parse the value (if it exists) to its specific type.
 
 ```fsharp
 // (string -> bool * 'a) -> name ->  EnvVarParseResult<'a>
@@ -275,11 +275,11 @@ let parseString = tryParseWith (fun s -> (true,s))
 
 The `tryParseWith` function takes the `tryParseFunc` function of type  `string -> bool * 'a` as its first parameter and the environment variable name as its second parameter. If the environment variable exists, it does the parsing using the provided `tryParseFunc` function and returns either `Ok` with the parsed value or `Error` with the corresponding `EnvVarParseError` value. 
 
-The `parseInt`, `parseBool` and `parseString` functions makes use of this `tryParseWith` function by providing it's corresponding parsing functions. 
+The `parseInt`, `parseBool` and `parseString` functions make use of this `tryParseWith` function by providing it's corresponding parsing functions. 
 
 ### Implementing parsePrimitive function
 
-Now we have functions to parse the specific types and all we need to do now is to leverage them in the `parsePrimitive` function. 
+Now we have functions to parse the specific types, and all we need to do now is to leverage them in the `parsePrimitive` function. 
 
 ```fsharp
 // string -> EnvVarParseResult<'T>
@@ -291,7 +291,7 @@ let parsePrimitive<'T> (envVarName : string) : EnvVarParseResult<'T> =
   | _ -> NotSupported "unknown target type" |> Error
 ```
 
-Here comes the compiler errors!
+Here come the compiler errors!
 
 ```
 error FS0001: Type mismatch. Expecting a
@@ -311,7 +311,7 @@ All branches of a pattern match expression must have the same type.
 This expression was expected to have type ''T', but here has type 'bool'.
 ```
 
-As the compiler rightly says, we are suppose to return `EnvVarParseResult` of the provided generic target type `'T`. But we are returning `EnvVarParseResult` with specific types `int` or `bool` or `string`. 
+As the compiler rightly says, we are supposed to return `EnvVarParseResult` of the provided generic target type `'T`. But we are returning `EnvVarParseResult` with specific types `int` or `bool` or `string`. 
 
 We know that these return types are right based on the pattern matching that we do on the shape of `'T` but the compiler doesn't know! It just doing its job based on the type signature that we provided
 
@@ -323,7 +323,7 @@ let parsePrimitive<'T> (envVarName : string) : EnvVarParseResult<'T> =
 
 What to do now?
 
-Well, We can solve this by introducing an another layer of abstraction[^3]
+Well, We can solve this by introducing another layer of abstraction[^3]
 
 ```fsharp
 let parsePrimitive<'T> (envVarName : string) : EnvVarParseResult<'T> =
@@ -336,7 +336,7 @@ let parsePrimitive<'T> (envVarName : string) : EnvVarParseResult<'T> =
   ... 
 ```
 
-The `wrap` function introduces a new generic type `'a` and accepts a function that takes a `string` and return this new generic type `'a`. Then in its function body, it uses the [unbox function](https://msdn.microsoft.com/en-us/visualfsharpdocs/conceptual/operators.unbox%5B't%5D-function-%5Bfsharp%5D) from F# standard library to unwrap the passed parameter function and call this with the given `envVarName`. 
+The `wrap` function introduces a new generic type `'a` and accepts a function that takes a `string` and returns this new generic type `'a`. Then in its function body, it uses the [unbox function](https://msdn.microsoft.com/en-us/visualfsharpdocs/conceptual/operators.unbox%5B't%5D-function-%5Bfsharp%5D) from F# standard library to unwrap the passed parameter function and call this with the given `envVarName`. 
 
 We can make of this `wrap` function to get rid of the compiler errors.
 
@@ -371,7 +371,7 @@ val it : EnvVarParseResult<int> = Error(NotFound "PORT")
 
 As there is no environment variable with the name `PORT`, we are getting the `NotFound` error as expected.
 
-If we set an environment variable with the given name `PORT`, and try it again, we can see the successful parsed result!
+If we set an environment variable with the given name `PORT`, and try it again, we can see the favourable parsed result!
 
 ```bash
 > Environment.SetEnvironmentVariable("PORT", "5432");;
@@ -382,7 +382,7 @@ val it : unit = ()
 val it : EnvVarParseResult<int> = Ok 5432
 ```
 
-Awesome! We acheived the milestone number one!!
+Awesome! We achieved the milestone number one!!
 
 
 ## Use Case #2 - Parsing Record Types
