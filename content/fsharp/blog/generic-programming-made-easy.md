@@ -40,7 +40,6 @@ val it : string = "Some John"
 > print (1,(Some "data"));;
 val it : string = "(1, Some data)"
 ```
-
 The hardcoded strings, lack of type safety are some of the concerns in the above snippet. 
 
 ```fsharp
