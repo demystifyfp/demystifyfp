@@ -1,10 +1,12 @@
 ---
 title: "Generic Programming Made Easy"
-date: 2017-12-11T19:39:26+05:30
+date: 2017-12-15T19:39:26+05:30
 tags: ["fsharp", "reflection", "TypeShape", "generics"]
 ---
 
-Generic programming is a style of computer programming in which algorithms are written in terms of types to-be-specified-later that are then instantiated when needed for specific types provided as parameters[^1]. Generic programming was part of .NET since .NET Version 2.0 and has [a fascinating history](https://blogs.msdn.microsoft.com/dsyme/2011/03/15/netc-generics-history-some-photos-from-feb-1999/) as well!
+Generic programming is a style of computer programming in which algorithms are written in terms of types to-be-specified-later that are then instantiated when needed for specific types provided as parameters[^1]. 
+
+Generic programming was part of .NET since .NET Version 2.0 and has [a fascinating history](https://blogs.msdn.microsoft.com/dsyme/2011/03/15/netc-generics-history-some-photos-from-feb-1999/) as well!
 
 For most of the use cases which involves generics, implementing them in F# is a cake-walk. However, when the generic programming requires reflection, it becomes a bumpy ride. Let's have a look at the source code[^2] below to get a feel of what I mean here! 
 
@@ -29,7 +31,7 @@ let rec print (value : obj) =
         value.ToString()
 ```
 
-This code snippet returns the string representation of the parameter `value`. The if-else-if expression unwraps the value from the `Option` type and `Tuple` type and return its underlying values by recursively calling the `print` function.
+This code snippet returns the string representation of the parameter `value`. The if-else-if expression unwraps the value from the `Option` type and `Tuple` type and return its underlying values by recursively calling the `print` function respectively.
 
 ```bash
 > print (Some "John");;
@@ -129,7 +131,7 @@ As we will be implementing the use cases by exploring the TypeShape library, F# 
 
 The next step is adding the TypeLibrary and referencing it in the script file.
 
-The entire TypeShape library is available as a single file in GitHub, and we can get it for our development using Paket’s GitHub File Reference feature. To do it, first, we first need to add the reference in the *paket.dependencies* which was auto-generated during the initialisation of paket. 
+The entire TypeShape library is available as a single file in GitHub, and we can get it for our development using Paket’s [GitHub File Reference](https://fsprojects.github.io/Paket/github-dependencies.html) feature. To do it, first, we first need to add the reference in the *paket.dependencies* which was auto-generated during the initialisation of paket. 
 
 ```
 github eiriktsarpalis/TypeShape:2.20 src/TypeShape/TypeShape.fs
@@ -173,11 +175,11 @@ The `EnvVarParseError` type models the possible errors that we may encounter whi
 * `NotSupported` message - We are not supporting the target datatype
 
 
-The `EnvVarParseResult<'T>` represents the final output of our parsing. It's either success or failure with any one of the above use cases. We are making use of F# [Result Type](TODO) to model this representation. 
+The `EnvVarParseResult<'T>` represents the final output of our parsing. It's either success or failure with any one of the above use cases. We are making use of F# [Result Type](https://docs.microsoft.com/en-us/dotnet/fsharp/language-reference/results) to model this representation. 
 
 ### Getting Started
 
-Let's get started by defining the scaffolding for our `parsePrimitive` function.
+Let's get started with the scaffolding of our `parsePrimitive` function.
 
 ```fsharp
 // string -> EnvVarParseResult<'T>
@@ -387,7 +389,7 @@ Awesome! We achieved the milestone number one!!
 
 ## Use Case #2 - Parsing Record Types
 
-Like what we did for the `parsePrimitive` function, let's start with scaffolding for parsing record types
+Like what we did for the `parsePrimitive` function, let's start with the scaffolding for parsing record types
 
 ```fsharp
 // unit -> EnvVarParseResult<'T>
@@ -405,7 +407,7 @@ let parseRecord<'T> () =
   | _ -> NotSupported "non record type found" |> Error
 ```
 
-We are doing two things here to pattern match the record type. First, we are matching whether the shape of the provided type `'T` is of shape `Shape.FSharpRecord` and whether it can be cast to TypeShape's F# Record representation `ShapeFSharpRecord<'T>`. If both these checks are through, we returning the `NotSupported` error with a friendly message. 
+We are doing two things here to pattern match the record type. First, we are matching whether the shape of the provided type `'T` is of shape `Shape.FSharpRecord` and then, whether it can be cast to TypeShape's F# Record representation `ShapeFSharpRecord<'T>`. If both these checks are through, we returning the `NotSupported` error with a message. 
 
 To verify this, Let's create a new record type `Config`.
 
@@ -498,13 +500,16 @@ To use the `parsePrimitive` function that we created in the previous section, we
 
 ### Parsing Record Fields
 
-Let's start with an initial function `parseRecordField` which is going to be called for populating the individual fields of the record type and call this from the `parseRecord` function for each field. 
+Let's start with an initial function `parseRecordField` which is going to be called for populating the individual fields of the record type. 
 
 ```fsharp
 // parseRecordField -> string
 let private parseRecordField (shape : IShapeWriteMember<'RecordType>) = 
   "TODO"
 ```
+> The `private` access modifier is required as the `IShapeWriteMember<'T>` is declared as `internal`. We can use `internal` instead of `private` as well.
+
+Then call this from the `parseRecord` function for each field. 
 
 ```diff
 let parseRecord<'T> () =
@@ -516,8 +521,6 @@ let parseRecord<'T> () =
     NotSupported "record type support just started"
   | _ -> NotSupported "non record type found"
 ```
-
-> The `private` access modifier is required as the `IShapeWriteMember<'T>` is declared as `internal`. We can use `internal` instead of `private` as well.
 
 The next step is getting the type of the field from the shape and call the `parsePrimitive` function with the field type and the environment variable name that we obtained above.
 
