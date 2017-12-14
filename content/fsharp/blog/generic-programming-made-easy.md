@@ -387,7 +387,7 @@ Awesome! We achieved the milestone number one!!
 
 ## Use Case #2 - Parsing Record Types
 
-Like what we did for the `parsePrimitive` function, let's start with a scaffolding for parsing record types
+Like what we did for the `parsePrimitive` function, let's start with scaffolding for parsing record types
 
 ```fsharp
 // unit -> EnvVarParseResult<'T>
@@ -395,17 +395,17 @@ let parseRecord<'T> () =
   NotSupported "non record type found" |> Error
 ```
 
-The first step towards our final outcome is matching the data type with the `Shape.FSharpRecord`
+The first step towards our outcome is matching the data type with the `Shape.FSharpRecord`
 
 ```fsharp
 let parseRecord<'T> () =
   match shapeof<'T> with
   | Shape.FSharpRecord (:? ShapeFSharpRecord<'T> as shape) ->
-    NotSupported "record type support just started" |> Error
+    NotSupported "record type support is just started" |> Error
   | _ -> NotSupported "non record type found" |> Error
 ```
 
-We are doing two things here to pattern match the record type, first we are matching whether the shape of the provided type `'T` is of shape `Shape.FSharpRecord` and whether it can be casted to TypeShape's F# Record representation `ShapeFSharpRecord<'T>`. If both these checks are through, we returning the `NotSupported` error with a friendly message. 
+We are doing two things here to pattern match the record type. First, we are matching whether the shape of the provided type `'T` is of shape `Shape.FSharpRecord` and whether it can be cast to TypeShape's F# Record representation `ShapeFSharpRecord<'T>`. If both these checks are through, we returning the `NotSupported` error with a friendly message. 
 
 To verify this, Let's create a new record type `Config`.
 
@@ -426,12 +426,12 @@ If we try the `parseRecord` with the `Config` type, we will get the error messag
 > parseRecord<Config> ();;
 [<Struct>]
 val it : EnvVarParseResult<Config> =
-  Error (NotSupported "record type support just started")
+  Error (NotSupported "record type support is just started")
 ```
 
 ### Environment Variable Names of Record fields
 
-Great, now we are able to get the recognize the record types. The next step is getting all the field names of the provided record type. 
+Great, now we are able to recognise the record types. The next step is getting all the field names of the provided record type. 
 
 We can get that using the `Fields` field of the `ShapeFSharpRecord<'T>` type. 
 
@@ -440,7 +440,7 @@ let parseRecord<'T> () =
   match shapeof<'T> with
   | Shape.FSharpRecord (:? ShapeFSharpRecord<'T> as shape) ->
     shape.Fields |> Seq.iter (fun field -> printfn "%s" field.Label)
-    NotSupported "record type support just started" |> Error
+    NotSupported "record type support is just started" |> Error
   | _ -> NotSupported "non record type found" |> Error
 ```
 
@@ -453,7 +453,7 @@ Environment
 val it : EnvVarParseError = ...
 ```
 
-The next step transforming these field names to its corresponding environment variable names. A typical environment variable name convention is an upper case string with multiple words separated by underscore. For example, `CONNECTION_STRING` would be environment variable name from which we need to retrieve the value of the `ConnectionString` field of `Config` type. 
+The next step is transforming these field names to its corresponding environment variable names. A typical environment variable name convention is an upper case string with multiple words separated by the underscore character. For example, `CONNECTION_STRING` would be environment variable name from which we need to retrieve the value of the `ConnectionString` field of `Config` type. 
 
 ```fsharp
 // ...
@@ -479,9 +479,9 @@ let parseRecord<'T> () =
     ...
 ```
 
-The `envVarNameRegEx` uses three alternatives and returns substrings which statisfy any of these alternatives. You learn more about the regular expression being used by putting the regular expression `([^A-Z]+|[A-Z][^A-Z]+|[A-Z]+)` in the *regular expression* text box in the [Regex101](https://regex101.com/) website. 
+The `envVarNameRegEx` uses three alternatives and returns substrings which satisfy any of these alternatives. You can learn more about the regular expression being used here by inputting the `([^A-Z]+|[A-Z][^A-Z]+|[A-Z]+)` value in the [Regex101](https://regex101.com/) website. 
 
-The `canonicalizeEnvVarName` function gets all the matched substring of `envVarNameRegEx`, then transforms each substring to its upper case format, and then joins all of them with `_` to return it as a `string`. 
+The `canonicalizeEnvVarName` function gets all the matched substring of `envVarNameRegEx`, then transforms each substring to its uppercase format, and then joins all of them with `_` to return it as a `string`. 
 
 Now if we try the `parseRecord` again, we can see environment variable names for all fields.
 
@@ -494,11 +494,11 @@ ENVIRONMENT
 val it : EnvVarParseError = ...
 ```
 
-To use the `parsePrimitive` function that we created in the previous section, we need two things, the primitive type and the environment variable name. Here we have environment variable name, the next step is figuring out the primitive type of each fields in the record type!
+To use the `parsePrimitive` function that we created in the previous section, we need two things, the primitive type and the environment variable name. Here we have environment variable name. The next step is figuring out the primitive type of each field in the record type!
 
 ### Parsing Record Fields
 
-Let's start with a initial function `parseRecordField` which is going to be called for populating the individual fields of the record type and call this from the `parseRecord` function for each fields. 
+Let's start with an initial function `parseRecordField` which is going to be called for populating the individual fields of the record type and call this from the `parseRecord` function for each field. 
 
 ```fsharp
 // parseRecordField -> string
@@ -538,7 +538,7 @@ let private parseRecordField (shape : IShapeWriteMember<'RecordType>) =
     }
 ```
 
-There is a lot of things going inside the `parseRecordField` function. So, let me explain one by one. 
+There is a lot of things going on the `parseRecordField` function. So, let me explain one by one. 
 
 The interface `IShapeWriteMember` has a method `Accept` with the following signature
 
@@ -548,7 +548,7 @@ IWriteMemberVisitor<'RecordType,'T> -> 'T
 
 Here in the `parseRecordField` function, we are partially applying the first argument (an implementation of `IWriteMemberVisitor<'RecordType,'T>` type) and return `'T`. The [Object expression](https://fsharpforfunandprofit.com/posts/object-expressions/) which implements the `IWriteMemberVisitor` interface defines the `'T` type as `string` and hence the `parseRecordField` returns `string` in this case.
 
-The `Visit` method of the `IWriteMemberVisitor` takes care of figuring out the `FieldType` of the given shape for us. So, inside the `Visit` method we can call the `parsePrimitive` function with the provided `FieldType` and return the result as `string`. 
+The `Visit` method of the `IWriteMemberVisitor` takes care of figuring out the `FieldType` of the given shape for us. So, inside the `Visit` method, we can call the `parsePrimitive` function with the provided `FieldType` and return the result as a `string`. 
 
 Now if we try `parseRecord` in fsharp interactive, we will get the following output.
 
@@ -575,14 +575,14 @@ NotFound "ENVIRONMENT"
 val it : EnvVarParseError = NotSupported "record type support just started"
 ```
 
-Alright! Our next focus in populating the record field if all the corresponding environment variables are available otherwise return the list of errors. 
+Alright! Our next focus is populating the record field if all the corresponding environment variables are available otherwise return the list of errors. 
 
 
 ### Populating Record Fields
 
 The `Inject` method of the `ShapeWriteMember` class takes a value of record type and a value of field type and changes the record's field value with the provided one via reflection. 
 
-To make use of this method, we need to have a value of the record type. As we didn't have it inside the `parseRecordField` function, instead of returing it as string, we can return a function a that takes a record value and call the `shape.Inject` inside it. 
+To make use of this method, we need to have a value of the record type. As we didn't have it inside the `parseRecordField` function, instead of returning it as a `string`, we can return a function a that takes a record value and call the `shape.Inject` inside it. 
 
 For the error case, we are just passing the error.
 
@@ -603,7 +603,7 @@ let private parseRecordField (shape : IShapeWriteMember<'RecordType>) =
     }
 ```
 
-Now we have the parsing logic in place for the populating individual record fields and the one last thing that we need is to prepare an initial value of the record type and call the function returned with `parseRecordField` function with the prepared record. 
+Now we have the parsing logic in place for the populating individual record fields, and the one last thing that we need is to prepare an initial value of the record type and call the function returned with `parseRecordField` function with the prepared record. 
 
 In this last step, we also need to collect all the errors!
 
@@ -631,7 +631,7 @@ let parseRecord<'T> () =
   | _ -> NotSupported "non record type found" |> Error
 ```
 
-Using the `CreateUninitialized` method of the `ShapeFSharpRecord` class, we are creating an initial value of the provided record type and using the [fold function](https://msdn.microsoft.com/en-us/visualfsharpdocs/conceptual/seq.fold%5B't,'state%5D-function-%5Bfsharp%5D), we are populating its individual fields using the `parseRecordField` function. 
+Using the `CreateUninitialized` method of the `ShapeFSharpRecord` class, we are creating an initial value of the provided record type. Then using the [fold function](https://msdn.microsoft.com/en-us/visualfsharpdocs/conceptual/seq.fold%5B't,'state%5D-function-%5Bfsharp%5D), we are populating its fields using the `parseRecordField` function. 
 
 That's it!
 
@@ -663,11 +663,13 @@ Awesome! We made it!!
 
 ## Summary
 
-In this blog post we have learned how to do generic programming involving reflection in F# using the TypeShape library. We have also learned how to build reusable abstraction in F# in an incremental fashion. 
+In this blog post, we have learned how to do generic programming involving reflection in F# using the TypeShape library. We have also learned how to build reusable abstraction in F# in an incremental fashion. 
 
-I am planning to release this as a NuGet library supporting both environment variables and application config file variables in sometime soon. Looking forward to listen to your comments to make it better. 
+I am planning to release this as a NuGet library supporting both environment variables and application config file variables in sometime soon. Looking forward to listening to your comments to make it better. 
 
-Wish you an advanced merry christmas :christmas_tree:  and happy new 2018 :tada:
+The source code is available in my [GitHub](https://github.com/tamizhvendan/FsEnvConfig) repository.
+
+Wish you an advanced Merry Christmas :christmas_tree:  and happy new 2018 :tada:
 
 [^1]: From [WikiPedia](https://en.wikipedia.org/wiki/Generic_programming)
 [^2]: Copied From Eirik Tsarpalis's [Slide](http://eiriktsarpalis.github.io/typeshape/#/12)
