@@ -156,7 +156,7 @@ defaultContentLanguageInSubdir = false
 
 [[menu.main]]
   name = "F# Applied"
-  url = "http://products.tamizhvendan.in/fsharp-applied"
+  url = "https://www.demystifyfp.com/FsApplied/"
   parent = "books"
 
 [[menu.main]]
