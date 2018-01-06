@@ -160,6 +160,11 @@ defaultContentLanguageInSubdir = false
   parent = "books"
 
 [[menu.main]]
+  name = "F# Applied II"
+  url = "https://www.demystifyfp.com/FsApplied2/"
+  parent = "books"
+
+[[menu.main]]
   name = "Courses"
   url = "#courses"
   identifier = "courses"
