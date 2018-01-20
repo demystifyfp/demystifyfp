@@ -1300,4 +1300,45 @@
    background-color: #f44336; /* Material Red500 */
    border-color: #ebccd1;
  }
+
+ b.conum {
+   display: inline-block;
+   color: #fff !important;
+   background-color: rgba(0,0,0,0.8);
+   -webkit-border-radius: 100px;
+   border-radius: 100px;
+   text-align: center;
+   width: 1.67em;
+   height: 1.67em;
+   font-size: 0.75em;
+   line-height: 1.67em;
+   font-family: "Open Sans", "Sans", sans-serif;
+   font-style: normal;
+   font-weight: bold;
+}
  
+
+.custom-counter {
+  margin: 0;
+  padding: 0;
+  list-style-type: none;
+}
+.custom-counter li {
+  counter-increment: step-counter;
+  margin-bottom: 5px;
+}
+.custom-counter li::before {
+  content: counter(step-counter);
+  margin-right: 5px;
+  font-size: 80%;
+  background-color: rgba(0,0,0,0.8);
+  color: white;
+  font-weight: bold;
+  padding: 3px 8px;
+  border-radius: 11px;
+}
+
+.custom-counter > li > p {
+  display: inline
+}
+

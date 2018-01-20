@@ -1,0 +1,26 @@
+---
+title: "Hello"
+date: 2018-01-20T10:37:16+05:30
+draft: true
+---
+
+[source,diff]
+----
++ open System // <1>
+let add a b = // <2>
+  a + b // <3>
+----
+<1> Library import
+<2> URL mapping
+<3> HTTP response body
+
+
+[source,fsharp]
+----
+open System // <1>
+let add a b = // <2>
+  a + b // <3>
+----
+<1> Library import
+<2> URL mapping
+<3> HTTP response body
