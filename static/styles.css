@@ -1329,7 +1329,7 @@
 }
 .custom-counter li::before {
   content: counter(step-counter);
-  margin-right: 5px;
+  margin-right: 6px;
   font-size: 80%;
   background-color: rgba(0,0,0,0.8);
   color: white;
