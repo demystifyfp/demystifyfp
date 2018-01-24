@@ -149,10 +149,15 @@ defaultContentLanguageInSubdir = false
   weight = 1
 
 [[menu.main]]
+  name = "Posts"
+  url = "#posts"
+  weight = 2
+
+[[menu.main]]
   name = "Books"
   url = "#books"
   identifier = "books"
-  weight = 2
+  weight = 3
 
 [[menu.main]]
   name = "F# Applied"
@@ -168,7 +173,7 @@ defaultContentLanguageInSubdir = false
   name = "Courses"
   url = "#courses"
   identifier = "courses"
-  weight = 3
+  weight = 4
 
 [[menu.main]]
   name = "MiniSuave in F#"
