@@ -156,18 +156,7 @@ defaultContentLanguageInSubdir = false
 [[menu.main]]
   name = "Books"
   url = "#books"
-  identifier = "books"
   weight = 3
-
-[[menu.main]]
-  name = "F# Applied"
-  url = "https://www.demystifyfp.com/FsApplied/"
-  parent = "books"
-
-[[menu.main]]
-  name = "F# Applied II"
-  url = "https://www.demystifyfp.com/FsApplied2/"
-  parent = "books"
 
 [[menu.main]]
   name = "Courses"
