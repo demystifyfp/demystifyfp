@@ -1,0 +1,143 @@
+---
+title: "Adding Meaning to Primitive Types in Fsharp"
+date: 2018-02-10T11:00:36+05:30
+draft: true
+tags : ["fsharp"]
+---
+
+One of the recommended guideline in Domain Driven Design is modelling the domain ideas 
+using the domain type (CustomerName, CustomerId) instead of using their corressponding primitive type (string, int). 
+In fsharp, with the help of [Single Case Discriminated Union](https://fsharpforfunandprofit.com/posts/designing-with-types-single-case-dus/), we can follow this guideline with minimal effort. 
+
+While following this practice in one of my recent project in fsharp, I came across an interesting use case and I used a lesser-known approach to solve the problem. 
+In this blog post, I will be sharing the little-known approach that I employed to solve the use case.
+
+
+## The Problem Domain
+
+Let's assume that we are developing an F# Application for managing our perosonal expenses. 
+
+One of the core domain idea that we'll use a lot is **Money**. 
+
+In .NET the primitive data type `decimal` is the appropriate for financial and monetary calculations and hence to model **Money** in fsharp, what we need is a Single Case Discriminated Union type wrapping the `decimal` type.
+
+```fsharp
+type Money = Money of decimal
+```
+
+> To keep things simple, we are not going to consider currency and exchange rates
+
+
+The next thing is modelling the income source and expense categories. For brevity, let's keep just two in each.
+
+```fsharp
+type IncomeSource =
+| Salary
+| Royalty
+
+type ExpenseCategory =
+| Food
+| Entertainment
+```
+
+The final domain representation that we need is `Transaction`, which is either a `Credit` or a `Debit`. 
+
+```fsharp
+type Income = {
+  Amount : Money
+  Source : IncomeSource
+} 
+
+type Expense = {
+  Amount : Money
+  Category : ExpenseCategory
+}
+
+type Transaction =
+| Credit of Income 
+| Debit of Expense
+```
+
+For our tiny perosonal finance managing application, these domain models are just sufficient. So, let's dive into the use cases. 
+
+
+### Use Case #1
+
+Our first use case, given a list of transactions and we have to compute the balance money. 
+
+As we know, the formula for computing the balance is 
+
+```plain
+balance money = (sum of credited amount of money) - (sum of debited amount of money)
+``` 
+
+Applying the same in fsharp, we will end up with the following implementation
+
+{callout="yes"}
+```fsharp
+// Transaction list -> Money
+let balance transactions =
+  transactions
+  |> List.map ( function
+                | Credit x -> 
+                  let (Money m) = x.Amount <1>
+                  m
+                | Debit y ->
+                  let (Money m) = y.Amount <2>
+                  -m
+              )
+  |> List.sum
+  |> Money <3>
+```
+
+There is an optimization in the `balance` function. Instead of computing the sum of credits and debits separately, we are applying the unary minus for the all debits and computing the sum of these transformed values in a single go. 
+
+In <1> and <2>, we are unwrapping the `decimal` type from the `Money` type and in <3> we are wrapping the `decimal` type back to `Money` type. 
+
+Now we have implementation for use case #1 and let's move to the next.
+
+
+### Use Case #2
+
+```fsharp
+// ExpenseCategory -> Transaction list -> Expense list -> Expense list
+let rec private getExpenses' expenseCategory transactions expenses =
+  match transactions with
+  | [] -> expenses
+  | x :: xs -> 
+    match x with
+    | Debit expense when expense.Category = expenseCategory ->
+      (expense :: expenses)
+      |> getExpenses' expenseCategory xs
+    | _ -> getExpenses' expenseCategory xs expenses
+
+// ExpenseCategory -> Transaction list -> Expense list
+let getExpenses expenseCategory transactions =
+  getExpenses' expenseCategory transactions []
+```
+
+
+
+{callout="yes"}
+```fsharp
+// ExpenseCategory -> Transaction list -> Money
+let getExpenditure expenseCategory transactions =
+  getExpenses expenseCategory transactions
+  |> List.map (fun expense -> 
+                let (Money m) = expense.Amount <1>
+                m <2>
+              )
+  |> List.sum
+  |> Money <3>
+```
+
+{callout="yes"}
+```fsharp
+// ExpenseCategory -> Transaction list list -> Money
+let averageExpenditure expenseCategory transactionsList =
+  transactionsList
+  |> List.map (getExpenditure expenseCategory)
+  |> List.map (fun (Money m) -> m) <1>
+  |> List.average
+  |> Money <2>
+```
