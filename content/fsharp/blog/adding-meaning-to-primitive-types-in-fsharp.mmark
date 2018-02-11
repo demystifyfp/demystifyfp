@@ -19,7 +19,9 @@ Let's assume that we are developing an F# Application for managing our perosonal
 
 One of the core domain idea that we'll use a lot is **Money**. 
 
-In .NET the primitive data type `decimal` is the appropriate for financial and monetary calculations and hence to model **Money** in fsharp, what we need is a Single Case Discriminated Union type wrapping the `decimal` type.
+In .NET, the primitive data type `decimal` is the appropriate for financial and monetary calculations. 
+
+Hence to model **Money** in fsharp, what we need is a Single Case Discriminated Union type wrapping the `decimal` type.
 
 ```fsharp
 type Money = Money of decimal
@@ -63,14 +65,83 @@ For our tiny perosonal finance managing application, these domain models are jus
 
 ### Use Case #1
 
-Our first use case, given a list of transactions and we have to compute the balance money. 
+Our first use case is finding the expenditure on a given `ExpenseCategory` from the list of transaction
+
+```fsharp
+ExpenseCategory -> Transaction list -> Money
+```
+
+To implement it, let's create an intermediate function `getExpenses`, that retrieves the expenses from a list of transaction.
+
+```fsharp
+// Transaction list -> Expense list
+let rec getExpenses transactions =
+  getExpenses' transactions []
+and getExpenses' transactions expenses =
+  match transactions with
+  | [] -> expenses
+  | x :: xs -> 
+    match x with
+    | Debit expense ->
+      getExpenses' xs (expense :: expenses)
+    | _ -> getExpenses' xs expenses
+```
+
+With the help of this `getExpenses` function, we can now implement the use case as follows
+
+{callout="yes"}
+```fsharp
+// ExpenseCategory -> Transaction list -> Money
+let getExpenditure expenseCategory transactions =
+  getExpenses transactions
+  |> List.filter (fun e -> e.Category = expenseCategory)
+  |> List.sumBy (fun expense -> 
+    let (Money m) = expense.Amount <1>
+    m <2>
+  )
+  |> Money <3>
+```
+
+<1> We are unwrapping the underlying `decimal` value from the `Money` type. 
+
+<2> Returing the unwrapped decimal value.
+
+<3> Putting the decimal value back to `Money` type after computing the sum.
+
+
+Now we have implementation for use case #1 and let's move to the next.
+
+### Use Case #2
+
+The second use case is computing the average expenditure on a given `ExpenseCategory` from the list of transactions
+
+{callout="yes"}
+```fsharp
+// ExpenseCategory -> Transaction list list -> Money
+let averageExpenditure expenseCategory transactionsList =
+  transactionsList
+  |> List.map (getExpenditure expenseCategory)
+  |> List.map (fun (Money m) -> m) <1>
+  |> List.average
+  |> Money <2>
+```
+
+Like the use case #1,
+
+<1> Unwraps the `decimal` value from the `Money` type and returns it.
+
+<2> Put the result of the average function back to the `Money` type.
+
+
+### Use Case #3
+
+Our final use case is given a list of transaction, we have to compute the balance money. 
 
 As we know, the formula for computing the balance is 
 
 ```plain
 balance money = (sum of credited amount of money) - (sum of debited amount of money)
 ``` 
-
 Applying the same in fsharp, we will end up with the following implementation
 
 {callout="yes"}
@@ -90,54 +161,12 @@ let balance transactions =
   |> Money <3>
 ```
 
-There is an optimization in the `balance` function. Instead of computing the sum of credits and debits separately, we are applying the unary minus for the all debits and computing the sum of these transformed values in a single go. 
+In the `balance` function, we have used an optimized version of the formula. 
 
-In <1> and <2>, we are unwrapping the `decimal` type from the `Money` type and in <3> we are wrapping the `decimal` type back to `Money` type. 
+Instead of computing the sum of credits and debits separately, we are applying the unary minus to the all debits and computing the sum of these transformed values in a single go. 
 
-Now we have implementation for use case #1 and let's move to the next.
+Like what we did for the use cases #1 and #2, Here also we are unwrapping the `decimal` type from the `Money` type at <1> and <2>, and at <3> we are wrapping the `decimal` type back to `Money` type after computing the sum. 
 
+## Unwrapping and Wrapping
 
-### Use Case #2
-
-```fsharp
-// ExpenseCategory -> Transaction list -> Expense list -> Expense list
-let rec private getExpenses' expenseCategory transactions expenses =
-  match transactions with
-  | [] -> expenses
-  | x :: xs -> 
-    match x with
-    | Debit expense when expense.Category = expenseCategory ->
-      (expense :: expenses)
-      |> getExpenses' expenseCategory xs
-    | _ -> getExpenses' expenseCategory xs expenses
-
-// ExpenseCategory -> Transaction list -> Expense list
-let getExpenses expenseCategory transactions =
-  getExpenses' expenseCategory transactions []
-```
-
-
-
-{callout="yes"}
-```fsharp
-// ExpenseCategory -> Transaction list -> Money
-let getExpenditure expenseCategory transactions =
-  getExpenses expenseCategory transactions
-  |> List.map (fun expense -> 
-                let (Money m) = expense.Amount <1>
-                m <2>
-              )
-  |> List.sum
-  |> Money <3>
-```
-
-{callout="yes"}
-```fsharp
-// ExpenseCategory -> Transaction list list -> Money
-let averageExpenditure expenseCategory transactionsList =
-  transactionsList
-  |> List.map (getExpenditure expenseCategory)
-  |> List.map (fun (Money m) -> m) <1>
-  |> List.average
-  |> Money <2>
-```
+Though we have a good domain model in the form of `Money`, a discouraging aspect is the repeatation of unwrapping and wrapping code to perform calculations on the `Money` type.  
