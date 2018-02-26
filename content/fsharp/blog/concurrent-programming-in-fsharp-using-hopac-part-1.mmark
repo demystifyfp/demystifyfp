@@ -1,7 +1,6 @@
 ---
 title: "Concurrent Programming in fsharp using Hopac (Part-I)"
-date: 2018-02-25T14:54:32+05:30
-draft: true
+date: 2018-02-26T19:08:32+05:30
 tags : ["fsharp", "Hopac", "concurrent-programming"]
 ---
 
