@@ -14,7 +14,7 @@ We are going to find the answer to this question by writing concurrent programs 
 
 ## What is Hopac
 
-Hopac is a F# library that provides a programming model inspired by John Reppy's [Concurrent ML](https://en.wikipedia.org/wiki/Concurrent_ML) language. Other languages that provide similar or related models include Racket, Clojure core.async, and Go.
+Hopac is a fsharp library that provides a programming model inspired by John Reppy's [Concurrent ML](https://en.wikipedia.org/wiki/Concurrent_ML) language. Other languages that offer similar or related models include Racket, Clojure core.async, and Go.
 
 > The essence of Hopac is lightweight threads, called jobs, and flexible lightweight synchronous message passing via channels (and other messaging primitives) - [Hopac Programming model](https://github.com/Hopac/Hopac/blob/master/Docs/Programming.md#the-hopac-programming-model)
 
@@ -23,19 +23,19 @@ Hopac is a F# library that provides a programming model inspired by John Reppy's
 
 We are going to make use of fsharp script file in this blog post to explore Hopac. 
 
-As a first step, initialize [paket](https://fsprojects.github.io/Paket/) either [manually](https://fsprojects.github.io/Paket/getting-started.html#Manual-setup) or using [forge](http://forge.run/), which automates the manual setup. 
+As a first step, initialise [paket](https://fsprojects.github.io/Paket/) either [manually](https://fsprojects.github.io/Paket/getting-started.html#Manual-setup) or using [forge](http://forge.run/), which automates the manual setup. 
 
 ```bash
 > forge paket init
 ```
 
-Then add the Hopac library via paket.
+Then add the Hopac library using paket.
 
 ```bash
 > paket add Hopac
 ```
 
-After installing, create an fsharp script file and refer the Hopac library
+After installing, create a fsharp script file and refer the Hopac library
 
 ```fsharp
 #r "packages/Hopac/lib/net45/Hopac.Core.dll"
@@ -47,9 +47,9 @@ open Hopac
 
 ## The "Hello World" Job
 
-In Hopac, the type [Job](http://hopac.github.io/Hopac/Hopac.html#def:type%20Hopac.Job) is the core programming model of Hopac that represents a lightweight thread of execution. 
+The type [Job](http://hopac.github.io/Hopac/Hopac.html#def:type%20Hopac.Job) is the core programming model of Hopac that represents a lightweight thread of execution. 
 
-We can create `Job<'x>` in Hopac by using its [JobBuilder](http://hopac.github.io/Hopac/Hopac.html#def:type%20Hopac.JobBuilder) aka `job` computation expresssion.
+We can create `Job<'x>` in Hopac by using its [JobBuilder](http://hopac.github.io/Hopac/Hopac.html#def:type%20Hopac.JobBuilder) aka `job` computation expression.
 
 
 ```fsharp
@@ -58,7 +58,7 @@ let helloWorldJob = job {
 }
 ```
 
-We can run this job using the [run](http://hopac.github.io/Hopac/Hopac.html#def:val%20Hopac.Hopac.run) function. 
+We can then run this job using the [run](http://hopac.github.io/Hopac/Hopac.html#def:val%20Hopac.Hopac.run) function. 
 
 ```fsharp
 run helloWorldJob
@@ -78,7 +78,7 @@ val it : unit = ()
 
 Now we know how to create and run jobs in Hopac. As a next step, let's define a `job` that takes some time for its computation.
 
-We are going to simulate this delay by using the `timeOutInMillis` function from Hopac that delays the computation for the provided milli seconds.
+We are going to simulate this delay by using the `timeOutInMillis` function from Hopac that delays the computation for the provided milliseconds.
 
 ```fsharp
 let longerHelloWorldJob = job {
@@ -109,7 +109,7 @@ val it : unit = ()
 
 ## Running Concurrent Jobs
 
-To run multiple jobs concurrently, we first need multiple jobs. So, let's create a new function `createJob` that takes a job id (to differentiate multiple jobs) and the job's computation time as its parameters and return the newly created `job`.
+To run multiple jobs concurrently, we first need multiple jobs. So, let's create a new function `createJob` that takes a job id (to differentiate the jobs) and the job's computation time as its parameters and return the newly created `job`.
 
 ```fsharp
 // int -> int -> Job<unit>
@@ -131,7 +131,7 @@ let jobs = [
 ]
 ```
 
-If we run these job sequentially, it will take nine seconds (9000 milliseconds) to complete. To make it run concurrently and complete the execution in four seconds (4000 milliseconds), we can levarage the [conIgnore](http://hopac.github.io/Hopac/Hopac.html#def:val%20Hopac.Job.conIgnore) function from Hopac
+If we run these job sequentially, it will take nine seconds (9000 milliseconds) to complete. To make it run concurrently and complete the execution in four seconds (4000 milliseconds), we can leverage the [conIgnore](http://hopac.github.io/Hopac/Hopac.html#def:val%20Hopac.Job.conIgnore) function from Hopac
 
 > The `conIgnore` function creates a job that runs all of the jobs as separate concurrent jobs and then waits for all of the jobs to finish. The results of the jobs are ignored.  
 
@@ -171,11 +171,11 @@ Awesome! We just witnessed the power of Hopac for the very first time and saved 
 
 ## A Real World Example
 
-As a last example of this blog post, let's have a look at a modified real world use case from my last project. 
+As the last example of this blog post, let's have a look at a modified real-world use case from my previous project. 
 
-Let's assume that we are building a home page of a product in an e-commerce portal which displays the product along with its reviews. The product details are stored in a database and the reviews of the product are stored in an external system. The requirement is to write an API that pulls the data from the both these sources, merge it and send it back to the client.
+Let's assume that we are building a home page of a product in an e-commerce portal which displays the product along with its reviews. The product details are stored in a database, and the reviews of the product are stored in an external system. The requirement is to write an API that pulls the data from the both these sources, merge it and send it back to the client.
 
-If we model this use case using Hopac Jobs, we would be having a function to retrive the product from database.
+If we model this use case using Hopac Jobs, we would have a function to retrieve the product from the database.
 
 ```fsharp
 type Product = { 
@@ -193,7 +193,7 @@ let getProduct id = job {
 }
 ``` 
 
-An another function to retrieve the product reviews from an external system
+Another function to retrieve the product reviews from an external system
 
 ```fsharp
 type Review = {
@@ -215,7 +215,7 @@ let getProductReviews id = job {
 }
 ```
 
-The final piece is writing an another function that merges the results from these two functions. Like the `async` computation expresssion in fsharp, in the `job` computation expresssion, we can use the `let!` binding to retrieve the output (or result) of a job. 
+The final piece is writing another function that merges the results from these two functions. Like the `async` computation expression in fsharp, in the `job` computation expression, we can use the `let!` binding to retrieve the output (or result) of a job. 
 
 {callout="yes"}
 ```fsharp
@@ -237,9 +237,9 @@ let getProductWithReviews id = job {
 }
 ```
 
-<1> retrives `Product` from the `Job<Product>`
+<1> retrieves `Product` from the `Job<Product>`
 
-<2> retrives `Review list` from the `Job<Review list>`
+<2> retrieves `Review list` from the `Job<Review list>`
 
 <3> return the merged result `ProductWithReviews`
 
@@ -268,11 +268,11 @@ val it : ProductWithReviews =
 
 The output is as expected but the time it took is five seconds (two to retrieve the product and three to retrive the reviews). It is because of the sequential execution of the jobs  
 
-Can we make it fast by running them parallely?
+Can we make it fast by running them parallelly?
 
-As these two function calls are independent to each others, we can run them parallely and then merge the results.
+As these two function calls are independent of each other, we can run them parallelly and then merge the results.
 
-To do it, we are going to levarage the infix operator `<*>` from Hopac
+To do it, we are going to leverage the infix operator `<*>` from Hopac
 
 ```fsharp
 val ( <*> ): Job<'x> -> Job<'y> -> Job<'x * 'y>
@@ -319,8 +319,8 @@ val it : ProductWithReviews =
 
 ## Summary
 
-One of the well thought aspect of Hopac library is its `job` computation expresssion and its  similarity with the `async` computation expresssion makes it easier to learn and apply!
+One of the well-thought aspects of Hopac library is its `job` computation expression and its  similarity with the `async` computation expression makes it easier to learn and apply!
 
-We had only scratched the surface of the Hopac library in this blog post. Hopac library has lot of powerful abstractions in its arsenal which we will be seeing in action in the upcoming blog posts. 
+We had only scratched the surface of the Hopac library in this blog post. Hopac library has a lot of powerful abstractions in its arsenal which we will see in action in the upcoming blog posts. 
 
 The source code of this blog post is available on [GitHub](https://github.com/demystifyfp/BlogSamples/tree/0.2/fsharp/HopacSeries/Part1)  
