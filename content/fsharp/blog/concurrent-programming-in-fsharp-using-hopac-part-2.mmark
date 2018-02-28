@@ -1,0 +1,19 @@
+---
+title: "Concurrent Programming in Fsharp Using Hopac Part 2"
+date: 2018-02-28T08:39:02+05:30
+draft: true
+tags : ["fsharp", "Hopac", "concurrent-programming"]
+---
+
+In the [last blog post]({{<relref "concurrent-programming-in-fsharp-using-hopac-part-1.mmark">}}), we learned the how to create jobs and run them parallely using [Hopac](https://github.com/hopac/Hopac). In this second part of the blog post series, we are going to explore inter job communication. 
+
+## Share Memory By Communicating
+
+In mutli threaded programming model, if two threads wants to communicate, the typical approach is using a shared memory backed by locks, thread-safe data structures (or other synchronization primitives). We have to follow certain [best practices](https://docs.microsoft.com/en-us/dotnet/standard/threading/managed-threading-best-practices) to avoid Deadlocks and Race Conditions while using the shared memory approach. Failing to do so may result in unpredicatable behaviour of the system that are hard to debug. It potentially end up as a maintainance nightmare. 
+
+The Hopac programming model provides an alternative approach for structuring inter job (aka lightweight thread) communication. It emphazies on passing the data through synchronous communication channels between jobs instead of meadiating the access to shared data. 
+
+To understand this better, let's see it in action.
+
+
+
