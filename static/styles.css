@@ -1316,6 +1316,10 @@
     font-style: normal;
     font-weight: bold;
 }
+
+.callout > .hljs-comment {
+  color: #fff !important;
+}
  
 
 .custom-counter {
