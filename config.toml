@@ -169,6 +169,12 @@ defaultContentLanguageInSubdir = false
   url = "https://www.udemy.com/learn-suave/?couponCode=DEMYSTIFY_FP"
   parent = "courses"
 
+[[menu.main]]
+  name = "Get 1:1 Help"
+  url = "https://www.codementor.io/tamizhvendan"
+  identifier = "mentoring"
+  weight = 5
+
 # Taxonomies.
 [taxonomies]
   tag = "tags"
