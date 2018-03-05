@@ -1,17 +1,16 @@
 ---
-title: "Concurrent Programming in fsharp using Hopac (Part-3)"
-date: 2018-03-03T11:48:02+05:30
-draft: true
+title: "Implementing API Gateway Pattern in fsharp using Hopac"
+date: 2018-03-05T19:16:02+05:30
 tags : ["fsharp", "Hopac", "concurrent-programming"]
 ---
 
-Two years back, I wrote [a blog post](http://blog.tamizhvendan.in/blog/2015/12/29/implementing-api-gateway-in-f-number-using-rx-and-suave/) on how to implement [the API Gateway pattern](https://www.nginx.com/blog/building-microservices-using-an-api-gateway) using [Reactive Extensions](http://reactivex.io/)(Rx). In this third part of concurrent programming in fsharp using Hopac blog series, we are going to revisit that blog post and port it to use Hopac instead of Reactive extensions. 
+Two years back, I wrote [a blog post](http://blog.tamizhvendan.in/blog/2015/12/29/implementing-api-gateway-in-f-number-using-rx-and-suave/) on how to implement [the API Gateway pattern](https://www.nginx.com/blog/building-microservices-using-an-api-gateway) using [Reactive Extensions](http://reactivex.io/)(Rx). In this third part of concurrent programming in fsharp using Hopac blog series, we are going to revisit that blog post and port it to use Hopac instead of Reactive Extensions. 
 
 ## Rx vs Hopac 
 
-The key difference between these Rx and Hopac is their communication model. 
+The critical difference between Rx and Hopac is their communication model. 
 
-Rx is primarily a system for querying data in motion asynchronously and systems builts using Rx rely on asynchronous message-passing. Whereas Hopac's programming model uses synchronous message passing (Rendezvous Point) using channels. 
+Rx is primarily a system for querying data in motion asynchronously, and systems built using Rx rely on asynchronous message-passing. Whereas Hopac's programming model uses synchronous message passing (Rendezvous Point) using channels. 
 
 If you are interested in knowing more about the difference, check out this Rich Hickey's talk on [introducing Clojure core.async](https://www.infoq.com/presentations/clojure-core-async)
 
@@ -24,7 +23,7 @@ Our objective is to write a backend which serves the data for showing a GitHub u
 
 ![](/img/fsharp/blog/hopac/Profile.png)
 
-This profile view has three components
+This profile view has three components.
 
 **User** - Username and Avatar.
 
@@ -36,7 +35,7 @@ To get these data from GitHub APIs, we need to make five API calls.
 
 ![](/img/fsharp/blog/hopac/Profile_With_API_Calls.png)
 
-> We can use GitHub's [GraphQL API](https://developer.github.com/v4/) to minimize it. As the focus of this blog post is different, we are not going to consider this.
+> We can use GitHub's [GraphQL API](https://developer.github.com/v4/) to minimise it. As the focus of this blog post is different, we are not going to consider this.
 
 ## Getting Started
 
@@ -56,7 +55,7 @@ Let's create a fsharp script file `ApiGateway.fsx` and add the following NuGet p
 
 <2> [**System.Net.Http**](https://www.nuget.org/packages/System.Net.Http/) - A dependency of *Http.Fs*
 
-<3> [**FSharp.Data**](http://fsharp.github.io/FSharp.Data) - For using [JSON Type Provider](http://fsharp.github.io/FSharp.Data/library/JsonProvider.html)
+<3> [**FSharp.Data**](http://fsharp.github.io/FSharp.Data) - For using [JSON Type Provider](http://fsharp.github.io/FSharp.Data/library/JsonProvider.html) and JSON serialization.
 
 Then refer these packages in the script file
 
@@ -76,7 +75,7 @@ open HttpFs.Client
 
 ## Setting up GitHub Http GET request
 
-According to GitHub API version 3 [specification](https://developer.github.com/v3), the presence of `User-Agent` header is [mandatory](https://developer.github.com/v3/#user-agent-required) for the all API requests.
+According to GitHub API version 3 [specification](https://developer.github.com/v3), the presence of `User-Agent` header is [mandatory](https://developer.github.com/v3/#user-agent-required) for all API requests.
 
 As we are going to use only HTTP GET requests, let's create a function `httpGet` that takes care of passing `User-Agent` header in all the HTTP Get requests 
 
@@ -102,7 +101,7 @@ val bind: ('x -> Job<'y>) -> Job<'x> -> Job<'y>
 
 ## Getting User
 
-To parse the user information from GitHub, let's create the Json Type Provider for the User.
+To parse the user information from GitHub, let's create the JSON Type Provider for the User.
 
 ```fsharp
 type UserTypeProvider = JsonProvider<"https://api.github.com/users/tamizhvendan">
@@ -131,7 +130,7 @@ let getUser username : Job<User> =
 val map: ('x -> 'y) -> Job<'x> -> Job<'y>
 ```
 
-We can verify this function using the F# interacive
+We can verify the `getUser` function using the F# interactive
 
 ```bash
 > getUser "tamizhvendan" |> run;;
@@ -146,11 +145,12 @@ val it : User =
 
 ## Getting Top Three User Repo
 
-Our next task is getting the top three repos of the user based on the count of starts. As we did for `User`, let's start by defining the `Repo` type using the Json Type Provider.
+Our next task is getting the top three repos of the user based on the count of stars. As we did for `User`, let's start by defining the `Repo` type using the JSON Type Provider.
 
 
 ```fsharp
-type ReposTypeProvider = JsonProvider<"https://api.github.com/users/tamizhvendan/repos">
+type ReposTypeProvider = 
+  JsonProvider<"https://api.github.com/users/tamizhvendan/repos">
 type Repo = ReposTypeProvider.Root
 ```
 
@@ -168,7 +168,7 @@ let topThreeUserRepos (repos : Repo []) =
   |> Array.take takeCount
 ```
 
-The final step is wiring up the `getTopThreeUserRepo` function with the help of the functions that we defined so far
+The final step is wiring up the `getTopThreeUserRepo` function with the help of the functions that we defined so far.
 
 ```fsharp
 let userReposUrl = sprintf "%s/users/%s/repos?per_page=100" basePath
@@ -181,7 +181,7 @@ let getTopThreeUserRepos username : Job<Repo []> =
   |> Job.map topThreeUserRepos // Job <Repo []>
 ```
 
-We can verify this in F# interacive as well
+We can verify this in F# interactive as well
 
 ```bash
 > getTopThreeUserRepos "tamizhvendan" |> run;;
@@ -193,12 +193,14 @@ val it : Repo [] =
   ...]
 ```
 
-The list user repositories GitHub API that we are using here returns a maximum of 100 repositories per page and we need to use their [pagination logic](https://developer.github.com/v3/guides/traversing-with-pagination/) to fetch all the repositories. We are going ahead with this basic implementation and we'll address pagination in the last section of this blog post.  
+The list user repositories GitHub API that we are using here returns a maximum of 100 repositories per page, and we need to use their [pagination logic](https://developer.github.com/v3/guides/traversing-with-pagination/) to fetch all the repositories. 
+
+We are going ahead with this underlying implementation, and we'll address pagination later in this blog post.  
 
 
 ## Getting Repo Languages
 
-The GitHub API for returning a repo's languages is having the following JSON structure
+The GitHub API for returning a repo's languages has the following JSON structure
 
 ```json
 {
@@ -209,9 +211,9 @@ The GitHub API for returning a repo's languages is having the following JSON str
   "Batchfile": 214
 }
 ```
-From the response, we can see that there is no fixed schema for languages like the `User` and `Repo` type. So, to get the languages, we need to parse the JSON and pick only its keys. 
+From the response, we can see that the languages API response doesn't have a fixed schema. So, to get the languages, we need to parse the JSON and pick only its keys. 
 
-We can make use of the `JsonValue.Parse` function from *FSharp.Data` library to do it.
+We can make use of the `JsonValue.Parse` function from *FSharp.Data* library to do it.
 
 ```fsharp
 // string -> string []
@@ -235,7 +237,7 @@ let getUserRepoLanguages username repoName =
   |> Job.map parseLanguagesJson // // Job<string []>
 ```
 
-Running this function in F# interacive, will give us the following output
+Running this function in F# interactive will give us the following output
 
 ```bash
 getUserRepoLanguages "tamizhvendan" "CafeApp" |> run;;
@@ -244,7 +246,7 @@ val it : string [] = [|"F#"; "JavaScript"; "Shell"; "HTML"; "Batchfile"|]
 
 ## The Climax
 
-Alright, now we have three individual functions that takes care of fetching the individual components.
+Alright, now we have three individual functions that take care of fetching the different components.
 
 ```fsharp
 val getUser : string -> Job<User>
@@ -252,7 +254,7 @@ val getTopThreeUserRepos : string -> Job<Repo []>
 val getUserRepoLanguages : string -> string -> Job <string []>
 ```
 
-The final piece is putting all these function together and prepare the exepected response. Before getting into that region, let's define some types to represent the final response that we want and a helper function to construct it.
+The final piece is putting all these functions together and prepare the expected response. Before getting into that region, let's define some types to represent the last answer that we want and a helper function to construct it.
 
 ```fsharp
 type RepoDto = {
@@ -277,11 +279,11 @@ type UserDto = {
 }
 ```
 
-To construct this response, we can call the these functions sequentially inside a `job` computation expression and populate the `UserDto` from the return values.
+To construct this response, we can call these functions sequentially inside a `job` computation expression and populate the `UserDto` from the return values.
 
 But do we need to run them sequentially in the first place? We can run them in parallel as well. 
 
-We can run the jobs `Job<User>` & `Job<Repo []>` parallelly. And then for each `Repo` in the `Repo []`, we can get their repsective langauges job `Job<string []` and run each of them parallelly. Finally, we can combine all of them and create `UserDto`.
+We can run the jobs `Job<User>` & `Job<Repo []>` parallelly. And then for each `Repo` in the `Repo []`, we can get their respective languages job `Job<string []>` and run each of them parallelly. Finally, we can combine all of them and create `UserDto`.
 
 Let's see it in action
 
@@ -302,7 +304,7 @@ let getUserDto username = job {
     repos 
     |> Array.map (getRepoDto username) <2>
     |> Job.conCollect <3>
-  return { <4>
+  return {
     Name = user.Name 
     AvatarUrl = user.AvatarUrl
     TopThreeRepos = repoDtos.ToArray() 
@@ -310,9 +312,9 @@ let getUserDto username = job {
 }
 ```
 
-<1> Uses the infix function `<*>` that we saw in the part-1 to run the given two jobs parallelly and returns their results as Tuple.
+<1> Uses the infix function `<*>` that we saw in the part-1 to run the given two jobs parallelly and returns their results as a Tuple.
 
-<2> For each `Repo` in the the `repos` array, we are getting their respective `Job<RepoDto>` using the `getRepoDto` function.
+<2> For each `Repo` in the `repos` array, we are getting their respective `Job<RepoDto>` using the `getRepoDto` function.
 
 <3> `Job.conCollect` creates a job that runs all of the jobs as separate concurrent jobs and returns their results as [ResizeArray](https://msdn.microsoft.com/en-us/visualfsharpdocs/conceptual/collections.resizearray%5B't%5D-type-abbreviation-%5Bfsharp%5D).
 
@@ -320,11 +322,9 @@ let getUserDto username = job {
 val conCollect: seq<Job<'x>> -> Job<ResizeArray<'x>>
 ```
 
-<4> Creates a value of type `UserDto`.
-
 That's all. 
 
-Let's run thin function in F# interactive and verify our implementation
+Let's run this function in F# interactive and verify our implementation
 
 ```fsharp
 getUserDto "tamizhvendan" |> run;;
@@ -347,15 +347,18 @@ Hurrah, Everything is working as expected!
 
 ### Adding Pagingation Support
 
-As mentioned earlier, in this last section we are going to do add the support for pagination in the get all public repositories API.
+As mentioned earlier, in this sub-section we are going to add the support for pagination in the get all public repositories API.
 
-The [pagination](https://developer.github.com/v3/#pagination) logic in GitHub APIs use the [Link](https://developer.github.com/v3/#link-header) header in the response to communicate the navigation URLs.
+The [pagination](https://developer.github.com/v3/#pagination) logic in GitHub APIs uses the [Link](https://developer.github.com/v3/#link-header) header in the HTTP response, to communicate the navigation URLs.
 
 
 A sample value of the `Link` header would look like
 
 ```
-  <https://api.github.com/user/193115/repos?per_page=100&page=1>; rel="prev", <https://api.github.com/user/193115/repos?per_page=100&page=3>; rel="next", <https://api.github.com/user/193115/repos?per_page=100&page=3>; rel="last", <https://api.github.com/user/193115/repos?per_page=100&page=1>; rel="first"
+  <https://api.github.com/user/193115/repos?per_page=100&page=1>; rel="prev", 
+  <https://api.github.com/user/193115/repos?per_page=100&page=3>; rel="next", 
+  <https://api.github.com/user/193115/repos?per_page=100&page=3>; rel="last", 
+  <https://api.github.com/user/193115/repos?per_page=100&page=1>; rel="first"
 ``` 
 
 To support pagination in our implementation, let's create a new type for representing the GitHub's response.
@@ -415,7 +418,7 @@ let httpGet url =
 + |> Job.map (fun r -> r.Body)
 ```
 
-Now we have the HTTP support in place for pagination, the next step is navigating through the pagination links and get all the user repos.
+Now we have the HTTP support in place for pagination. The next step is navigating through the pagination links and get all the user repos.
 
 {callout="yes"}
 ```fsharp
@@ -442,7 +445,7 @@ let getAllUserRepos username =
 
 <1> - The recursive function `getAllUserRepos'` implements the page navigation logic and the outer function `getAllUserRepos` calls this recursive one (at <6>) with the initial URL and an empty list of `Repo`.
 
-<2> - After getting the `Repo list` of the current page, the `getAllUserRepos'` function concats it with the repos from the initial list.
+<2> - After getting the `Repo list` of the current page, the `getAllUserRepos'` function concatenates it with the repos from the initial list.
 
 <3> - If the current page has the next page URL, we are calling the `getAllUserRepos'` function recursively with the next page's URL and repo lists populated so far (at <4>).
 
@@ -460,11 +463,9 @@ The final set of change is, calling this `getAllUserRepos` function from the `ge
    |> Job.map topThreeUserRepos
 ```
 
-That's all!
-
 ### Adding Log
 
-If the run the current implementation in F# interactive, we are just seeing the final output and we have no clue about what is going behind the scenes. 
+If the run the current implementation in F# interactive, we just see the final output and we have no clue about what is happening behind the scenes. 
 
 To get this insight let's sprinkle some log statements.
 
@@ -484,7 +485,7 @@ let httpGetWithPagination url =
 + |> Job.map (log ("Response : " + url))
 ```
 
-If we run the `getTopThreeUserRepos` function with the username (`haf`) of [Henrik Feldt's](https://twitter.com/henrikfeldt), co-Author of [Suave](https://suave.io), who is having `280` public repositories,
+If we run the `getTopThreeUserRepos` function with the username (`haf`) of [Henrik Feldt's](https://twitter.com/henrikfeldt), co-author of [Suave](https://suave.io), who is having `280` public repositories,
 
 ```fsharp
 #time "on"
@@ -511,7 +512,7 @@ Request : https://api.github.com/repos/haf/DotNetZip.Semverd/languages
 Response : https://api.github.com/repos/haf/expecto/languages
 Response : https://api.github.com/repos/haf/DotNetZip.Semverd/languages
 Response : https://api.github.com/repos/haf/Http.fs/languages
-Real: 00:00:07.179, CPU: 00:00:01.078, GC gen0: 3, gen1: 1
+Real: 00:00:04.179, CPU: 00:00:01.078, GC gen0: 3, gen1: 1
 val it : UserDto =
   {Name = "Henrik Feldt";
    AvatarUrl = "https://avatars0.githubusercontent.com/u/193115?v=4";
@@ -532,9 +533,13 @@ val it : UserDto =
 --> Timing now off
 ```
 
-From this log, we can infer that the requests to get the user and repo's first page are parallel, then the requests for navigating each page is sequential and finally requests for getting the languages of top three repos are parallel.
+From this log, we can infer that the requests to get the user and repo's first page are parallel, then the requests for navigating each page is sequential, and finally, requests for obtaining the languages of top three repos are parallel.
 
 ### Exposing HTTP endpoint
+
+The final piece of work that we need to do is exposing the `getUserDto` function via HTTP GET API.
+
+Add [Suave](https://suave.io) NuGet package and refer them in the script file
 
 ```bash
 forge paket add Suave
@@ -544,12 +549,16 @@ forge paket add Suave
 // ...
 #r "packages/Suave/lib/net40/Suave.dll"
 
+// ...
 open Suave
 open Suave.Successful
 open Suave.Operators
 open System.Threading
+
 // ...
 ```
+
+To serialise `UserDto` and `RepoDto` to JSON, let's add `ToJson` function which transforms the DTOs to FSharp.Data's `JsonValue` type.
 
 ```fsharp
 type RepoDto = {
@@ -587,15 +596,21 @@ type UserDto = {
     UserDto.ToJson(u).ToString()
 ```
 
+The `ToJsonString` function returns the string representation of the `UserDto`'s `JsonValue`.
+
+
+Then write the `getUserApi` function that calls the `getUserDto` function and transforms the return value to the corresponding HTTP response.
+
 {callout="yes"}
 ```fsharp
 open Suave.Operators <1>
 
+// string -> HttpContext -> Async<HttpContext option>
 let getUserApi username ctx = async {
   let! userDtoResponse =
-    getUserDto username
-    |> Job.catch <2>
-    |> Job.toAsync <3>
+    getUserDto username // Job<UserDto>
+    |> Job.catch // Job<Choice<UserDto, exn>> <2>
+    |> Job.toAsync // Async<Choice<UserDto, exn>> <3>
   match userDtoResponse with
   | Choice1Of2 userDto ->
     let res =
@@ -609,6 +624,15 @@ let getUserApi username ctx = async {
     return! ServerErrors.INTERNAL_ERROR "something went wrong" ctx
 }
 ```
+
+<1> Opens the module `Suave.Operators` here instead of at the beginning of the file as `>=>` symbol is also defined in *Hopac.Infixes* module
+
+<2> The `Job.catch` function creates a job that runs the given job and results in either the result of the job or the exception raised by the job.
+
+<3> The `Job.toAsync` function creates an async operation that starts the given job and waits for it to complete
+
+
+Finally, wire up the `getUserApi` function with a path and start the Suave server.
 
 ```fsharp
 let app = pathScan "/api/profile/%s" getUserApi
@@ -632,16 +656,23 @@ let stopServer (cts : CancellationTokenSource) =
 val cts : CancellationTokenSource
 ```
 
+We can then verify the API via Curl. 
+
 ![](/img/fsharp/blog/hopac/api_response.png)
 
+Awesome!! 
+
+> Make sure that we stop the server using the `stopServer` function (as we are using F# Script to run the HTTP server).
 ```bash
 > stopServer cts;;
 val it : unit = ()
 ```
+
+
 ## Summary
 
-> Parallelism is simply running things in parallel. Concurrency is a way to structure your program. - Rob Pike
+> Parallelism is merely running things in parallel. Concurrency is a way to structure your program. - Rob Pike
 
-It is exactly what we did in this blog post. All we did was, structuring the execution of `Job` declaratively and get the job *(pun intended)* done with the help of Hopac. 
+It is precisely what we did in this blog post. We structured the execution of `Job`s declaratively and get the `job` *(pun intended)* done with the help of Hopac. 
 
-We have also learned the `Job.bind`, `Job.map` & `Job.conCollect` functions from the Hopac library on the way. The source code of this blog post is available on [GitHub](https://github.com/demystifyfp/BlogSamples/tree/0.4/fsharp/HopacSeries/Part3)
+We have also learned the `Job.bind`, `Job.map`, `Job.catch`, `Job.toAsync` & `Job.conCollect` functions from the Hopac library on the way. The source code of this blog post is available on [GitHub](https://github.com/demystifyfp/BlogSamples/tree/0.5/fsharp/HopacSeries/Part3)
