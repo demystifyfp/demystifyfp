@@ -345,7 +345,7 @@ val it : UserDto =
 
 Hurrah, Everything is working as expected! 
 
-## Adding Pagingation Support
+### Adding Pagingation Support
 
 As mentioned earlier, in this last section we are going to do add the support for pagination in the get all public repositories API.
 
@@ -462,7 +462,7 @@ The final set of change is, calling this `getAllUserRepos` function from the `ge
 
 That's all!
 
-## Adding Log
+### Adding Log
 
 If the run the current implementation in F# interactive, we are just seeing the final output and we have no clue about what is going behind the scenes. 
 
@@ -534,6 +534,110 @@ val it : UserDto =
 
 From this log, we can infer that the requests to get the user and repo's first page are parallel, then the requests for navigating each page is sequential and finally requests for getting the languages of top three repos are parallel.
 
+### Exposing HTTP endpoint
+
+```bash
+forge paket add Suave
+```
+
+```fsharp
+// ...
+#r "packages/Suave/lib/net40/Suave.dll"
+
+open Suave
+open Suave.Successful
+open Suave.Operators
+open System.Threading
+// ...
+```
+
+```fsharp
+type RepoDto = {
+  // ...
+} with
+  static member ToJson(r : RepoDto) = 
+    let languages =
+      r.Languages 
+      |> Array.map (JsonValue.String)
+      |> JsonValue.Array
+    let stars =
+      r.StargazersCount |> decimal |> JsonValue.Number
+    JsonValue.Record [|
+      "name", JsonValue.String r.Name
+      "stars", stars
+      "languages", languages
+    |]
+```
+
+```fsharp
+type UserDto = {
+  // ...
+} with
+  static member ToJson(u : UserDto) =
+    let topThreeRepos =
+      u.TopThreeRepos
+      |> Array.map RepoDto.ToJson
+      |> JsonValue.Array
+    JsonValue.Record [|
+      "name", JsonValue.String u.Name
+      "avatarUrl", JsonValue.String u.AvatarUrl
+      "topThreeRepos", topThreeRepos
+    |]
+  static member ToJsonString(u : UserDto) =
+    UserDto.ToJson(u).ToString()
+```
+
+{callout="yes"}
+```fsharp
+open Suave.Operators <1>
+
+let getUserApi username ctx = async {
+  let! userDtoResponse =
+    getUserDto username
+    |> Job.catch <2>
+    |> Job.toAsync <3>
+  match userDtoResponse with
+  | Choice1Of2 userDto ->
+    let res =
+      userDto
+      |> UserDto.ToJsonString
+      |> OK
+      >=> Writers.setMimeType "application/json; charset=utf-8" 
+    return! res ctx
+  | Choice2Of2 ex ->
+    printfn "%A" ex
+    return! ServerErrors.INTERNAL_ERROR "something went wrong" ctx
+}
+```
+
+```fsharp
+let app = pathScan "/api/profile/%s" getUserApi
+
+let startServer () =
+  let cts = new CancellationTokenSource()
+  let listening, server = 
+    startWebServerAsync defaultConfig app
+  Async.Start(server, cts.Token) |> ignore
+  Async.RunSynchronously listening |> ignore
+  cts
+
+let stopServer (cts : CancellationTokenSource) =
+  cts.Cancel true
+  cts.Dispose()
+```
+
+```bash
+> let cts = startServer ();;
+[09:45:15 INF] Smooth! Suave listener started in 1.712 with binding 127.0.0.1:8080
+val cts : CancellationTokenSource
+```
+
+![](/img/fsharp/blog/hopac/api_response.png)
+
+```bash
+> stopServer cts;;
+val it : unit = ()
+```
 ## Summary
 
 > Parallelism is simply running things in parallel. Concurrency is a way to structure your program. - Rob Pike
