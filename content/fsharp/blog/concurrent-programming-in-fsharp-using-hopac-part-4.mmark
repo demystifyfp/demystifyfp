@@ -1,18 +1,17 @@
 ---
 title: "Concurrent Programming in fsharp using Hopac - Part 4"
 date: 2018-03-16T08:46:01+05:30
-draft: true
 tags : ["fsharp", "Hopac", "concurrent-programming"]
 ---
 
 Hi,
 
-Welcome back to fourth part of Concurrent Programming in fsharp blog post series. In [part-2]({{< relref "concurrent-programming-in-fsharp-using-hopac-part-2.mmark#a-communicating-job-in-action" >}}), we just learned that `Alt<'a>` is a sub class of `Job<'a>`. In this blog post, we are doing to dive deep into this abstraction and learn what it brings to the table. 
+Welcome back to the fourth part of Concurrent Programming in fsharp blog post series. In [part-2]({{< relref "concurrent-programming-in-fsharp-using-hopac-part-2.mmark#a-communicating-job-in-action" >}}), we just learned that `Alt<'a>` is a subclass of `Job<'a>`. In this blog post, we are doing to dive deep into this abstraction and learn what it brings to the table. 
 
 
 ## An Example
 
-Before diving into the definiton of `Alt<'a>`, let's figure out why we need it in the first place. 
+Before diving into the definition of `Alt<'a>`, let's figure out why we need it in the first place. 
 
 Assume that we have a function `delayedPrintn` which prints a given message after `n` milliseconds
 
@@ -46,7 +45,7 @@ val it : unit = ()
 
 Nothing fancy and it worked as expected. 
 
-Let's make it little complicated by defining two more jobs to print `Hi` and `Hello` after waiting for different time period.
+Let's make it little complicated by defining two more jobs to print `Hi` and `Hello` after waiting for `2000` and `1000` milliseconds respectively.
 
 ```fsharp
 // Job<unit>
@@ -74,7 +73,7 @@ runThemParallel ()
 #time "off"
 ```
 
-We can witness that the jobs were executed parallelly and prints the output as expected. 
+We can witness that the jobs were executed parallelly and print the output as expected. 
 
 ```bash
 --> Timing now on
@@ -86,7 +85,7 @@ val it : unit = ()
 ```
 
 
-And there comes the new requirement! 
+And here comes the new requirement! 
 
 Given we have two printers like the above, if one printer completes its job, stop the other from executing it.
 
@@ -101,16 +100,16 @@ That's interesting! Let's explore how can we solve this
 
 >However, if you do encapsulate the protocol as a selective synchronous operation, you can then combine the operation with other selective synchronous operations. That is the essence of Hopac and CML. - [Hopac Documentation](https://hopac.github.io/Hopac/Hopac.html#def:type%20Hopac.Alt)
 
-The keypoint that we are interested in to solve our problem is `selective`. In other words, among the two printers, we are interested (selective) in the one which prints first. 
+The critical point that we are interested in to solve our problem is `selective`. In other words, among the two printers, we are concerned (selective) in the one which prints first. 
 
-The function that can help use here is `Alt.choose`
+The function that can help us here is `Alt.choose`
 
 > `Alt.choose` creates an alternative that is available when any one of the given alternatives is
 ```fsharp
 val choose: seq<#Alt<'x>> -> Alt<'x>
 ```
 
-As we are going to deal with only two `Alt`s, we are going to make use of `<|>` operator function which is an optimized version of calling the `choose` function with a sequence of two items.
+As we are dealing with only two `Alt`s, we are going to make use of `<|>` operator function which is an optimised version of calling the `choose` function with a sequence of two items.
 
 > `<|>` creates an alternative that is available when either of the given alternatives is available. xA1 <|> xA2 is an optimized version of choose [xA1; xA2].
 ```fsharp
@@ -126,13 +125,13 @@ The `delayedPrintn` function is returning `Job<unit>` function now.
 val delayedPrintn: string -> int -> Job<unit>
 ```
 
-To apply `<|>` operator function, we need to modify it to return `Alt<unit>`. As a matter of fact, The `timeOutMillis` function is returning `Alt<unit>`
+To apply `<|>` operator function, we need to modify it to return `Alt<unit>`. The `timeOutMillis` function is already returning `Alt<unit>`
 
 ```fsharp
 val timeOutMillis: int -> Alt<unit>
 ```
 
-The `Job.map` function transforming it to `Job<unit>`
+But the `Job.map` function transforming it to `Job<unit>`
 
 ```fsharp
 val map: ('x -> 'y) -> Job<'x> -> Job<'y>
@@ -149,7 +148,7 @@ let delayedPrintn msg delayInMillis =
 To achieve what we are doing with `Job.map`, we can make use of the `Alt.afterFun` function
 
 ```fsharp
-val afterFun: ('x -> 'y) -> Alt<'x> -> Alt
+val afterFun: ('x -> 'y) -> Alt<'x> -> Alt<'y>
 ```
 
 ```diff
@@ -193,9 +192,9 @@ Awesome!!
 
 Wait what is happening behind the scene? Was the `delayedHiPrinter` called? 
 
-Yes, It is. But as soon as the `delayedHelloPrinter` completes its execution, the `<|>` function stops the execution of `delayedHiPrinter` and hence we are not seeing `Hi` in the output.
+Yes, It is. But as soon as the `delayedHelloPrinter` completes its execution, the `<|>` function stops the execution of `delayedHiPrinter` and hence we don't see `Hi` in the output.
 
-To verify this, we can modify the `delayedPrintn` as below, which prints the a log message when printer started its execution
+To verify this, we can modify the `delayedPrintn` as below, which prints a log message when printer started its execution
 
 ```fsharp
 // string -> int -> Alt<unit>
@@ -226,13 +225,13 @@ val it : unit = ()
 ```
 
 
-## Negative Acknowlegment
+## Negative Acknowledgement
 
-In the above section, we didn't care about the `delayedHiPrinter` and ignored it completly. But in certain real world use cases, we can't afford an execution to be stopped abruptly. In those cases, we need to let the `Alt<'a>` about this situation.
+In the above section, we didn't care about the `delayedHiPrinter` and ignored it completely. But in particular real-world use cases, we can't afford an execution to be stopped abruptly. In those cases, we need to let the `Alt<'a>` know about this situation.
 
-To implement this kind of scenarios, Hopac offers [Negative Acknowlegment](https://github.com/Hopac/Hopac/blob/master/Docs/Alternatives.md#cancellation-with-negative-acknowledgments)
+To implement this kind of scenarios, Hopac offers [Negative Acknowledgement](https://github.com/Hopac/Hopac/blob/master/Docs/Alternatives.md#cancellation-with-negative-acknowledgments).
 
-To implement this behaviour in our example, let's create an another function `delayedPrintnWithNack` which wraps the `delayedPrintn` with the negative acknowledgment support.
+To implement this behaviour in our example, let's create an another function `delayedPrintnWithNack` which wraps the `delayedPrintn` with the negative acknowledgement support.
 
 {callout="yes"}
 ```fsharp
@@ -249,20 +248,20 @@ let delayedPrintnWithNack msg delayInMillis =
     |> Job.map (fun _ -> delayedPrintn msg delayInMillis) <4> // Job<Alt<unit>>
 ```
 
-There is a lot is happening in this short code snippet. So, Let's dissect it
+There is a lot is happening in this short code snippet. So, Let's dissect it.
 
 
-<1> We are defining a `onNack` function to specify what to do in the event of an negative acknowledgment. For simplicity we are just printing an abort message. 
+<1> We are defining an `onNack` function to specify what to do in the event of a negative acknowledgement. For simplicity we are just printing an abort message. 
 
-<2> To make any `Alt<'a>` negative acknowledgment aware, Hopac provies a function called `Alt.withNackJob`.
+<2> To make any `Alt<'a>` negative acknowledgement aware, Hopac provides a function called `Alt.withNackJob`.
 > ```fsharp
 val withNackJob: (Promise<unit> -> Job<Alt<'x>>) -> Alt<'x>
 ``` 
-> The `withNackJob` function creates an alternative that is computed at instantiation time with the given job constructed with a negative acknowledgment alternative.
+> The `withNackJob` function creates an alternative that is computed at instantiation time with the given job constructed with a negative acknowledgement alternative.
 
 > `withNackJob` allows client-server protocols that do require the server to be notified when the client aborts the transaction to be encapsulated as selective operations. 
 
-> The negative acknowledgment alternative will be available in case some other instantiated alternative involved in the choice is committed to instead. - **Hopac Documentation**
+> The negative acknowledgement alternative will be available in case some other instantiated alternative involved in the choice is committed to instead. - **Hopac Documentation**
 
 > `Promise<'a>` is a sub class of `Alt<'a>`, which we'll see in detail in a later blog post
 
@@ -305,15 +304,17 @@ val it : unit = ()
 --> Timing now off
 ```
 
-From the log that we can assert that we gracefully handled the negative acknowledgment.
+From the log that we can assert that we gracefully handled the negative acknowledgement.
 
-Here is my best effor to show what is happening in the `delayedPrintnWithNack` function
+Here is my best effort to show what is happening in the `delayedPrintnWithNack` function
 
 ![](/img/fsharp/blog/hopac/nack.png)
 
 ## Summary
 
-In this blog post, we explored how to implement selective synchronization in Hopac using `Alt`. It is fascinating to experience that we can write harder concurrent programs with less code. Stay tuned for the upcoming blog posts. We are going to build some awesome stuffs using `Alt`.
+In this blog post, we explored how to implement selective synchronisation in Hopac using `Alt`. It is fascinating to experience that we can write harder concurrent programs with less code. 
+
+Stay tuned for the upcoming blog posts. We are going to build some awesome stuff using `Alt`.
 
 The source code of this blog post is available on [GitHub](https://github.com/demystifyfp/BlogSamples/tree/0.6/fsharp/HopacSeries/Part4)  
 
