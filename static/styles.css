@@ -1349,3 +1349,17 @@
 .read-more {
   margin-top: 10px
 }
+
+.bmc {
+    display: block;
+    overflow-x: auto;
+    padding: 1em;
+    color: #333;
+    background: #f8f8f8;
+}
+
+.bmc img {
+  margin-left: auto;
+	margin-right: auto;
+	display: block;
+}
