@@ -1,0 +1,206 @@
+---
+title: "Concurrent Programming in fsharp Using Hopac - Part 5"
+date: 2018-03-19T17:13:48+05:30
+draft: true
+tags : ["fsharp", "Hopac", "concurrent-programming"]
+---
+
+Hi,
+
+In the [last blog post]({{< relref "concurrent-programming-in-fsharp-using-hopac-part-4.mmark">}}), we learned how `Alt` in Hopac works and its applications. In this blog post, we are going to apply what we learnt there and create a Ticker. Using ticker we can do something repeatedly at regular intervels. 
+
+To implement a Ticker in Hopac, we have to know one more abstraction in Hopac called `IVar`. So, in the first section, we are going to learn `IVar` and then we'll using it to implement Ticker. 
+
+Let's dive in 
+
+
+## The IVar type
+
+In a nutshell, `IVar` represents a write once variable. 
+
+> Write once variables are designed for and most commonly used for getting replies from concurrent servers and asynchronous operations, but can also be useful for other purposes such as for one-shot events and for implementing incremental, but immutable, concurrent data structures.
+
+> Because it is common to need to be able to communicate either an expected successful result or an exceptional failure in typical use cases of write once variables, direct mechanisms are provided for both. The implementation is optimized in such a way that the ability to report an exceptional failure does not add overhead to the expected successful usage scenarios.
+
+> Write once variables are lightweight objects and it is typical to always just create a new write once variable when one is needed. In most cases, a write once variable will be slightly more lightweight than a channel. This is possible because write once variables do not support simple rendezvous like channels do. When simple rendezvous is necessary, a channel should be used instead. - Hopac Documentation
+
+The `IVar<'a>` type is a sub class of `Promise<'a>` which in turn a sub class of `Alt<'a>`. 
+
+Let's see `IVar` in action to learn it better
+
+
+{callout="yes"}
+```fsharp
+open Hopac 
+
+// IVar<'a> -> 'a -> unit
+let fillAndRead iVar value =
+  IVar.fill iVar value // Job<unit> <1>
+  |> Job.bind (fun _ -> IVar.read iVar) // Job<unit> <2>
+  |> Job.map (printfn "%A") // Job<unit>
+  |> run // unit
+```
+
+As the name indicates, the `fillAndRead` is a function fills the given write once variable `iVar` with the provided `value`, and then reads the `value` from the `iVar`. Finally the prints the value. 
+
+<1> The `IVar.fill` function creates a job that writes the given value to the given write once variable. 
+```fsharp
+val fill: IVar<'x> -> 'x -> Job<unit>
+```
+
+<span class="callout">2</span> The `IVar.read` function creates an alternative that becomes available after the write once variable has been written to. 
+```fsharp
+val read: IVar<'x> -> Alt<'x>
+``` 
+
+Executing the `fillAndRead` function as below 
+```fsharp
+fillAndRead (IVar<bool>()) true
+fillAndRead (IVar<bool>()) false
+```
+will give the following output
+```bash
+> fillAndRead (IVar<bool>()) true
+- fillAndRead (IVar<bool>()) false
+- ;;
+true
+false
+val it : unit = ()
+```
+
+The `IVar.fill` function will return an exception, if the `IVar` variable was already filled. 
+
+We can verify this by defining a new `IVar` value `intIVar` and using this to call the `fillAndRead` twice
+
+```fsharp
+let intIVar = IVar<int>()
+fillAndRead intIVar 42
+```
+Executing the above two lines will yield the below output 
+```bash
+> let intIVar = IVar<int>()
+- fillAndRead intIVar 42
+- ;;
+42
+val intIVar : IVar<int>
+val it : unit = ()
+```
+
+And then calling `fillAndRead` function with `intIVar` will have the following output 
+```bash
+> fillAndRead intIVar 10
+- ;;
+Unhandled exception: System.Exception: IVar full
+No other causes.
+val it : unit = ()
+```
+
+If we don't want any exception to be thrown while filling a `IVar` value, we can make use of `IVar.tryFill` function, which creates a job that tries to write the given value to the given write once variable. No operation takes place and no error is reported in case the write once variable has already been written to.
+
+```fsharp
+val tryFill: IVar<'x> -> 'x -> Job<unit>
+```
+
+Let's write an another function `tryFillAndRead` which exactly does what `fillAndRead` function did except the usage of `IVar.fill` function.
+
+```fsharp
+let tryFillAndRead iVar value =
+  IVar.tryFill iVar value
+  |> Job.bind (fun _ -> IVar.read iVar)
+  |> Job.map (printfn "%A")
+  |> run
+```
+
+With this, if we try the above example with the `tryFillAndRead` function
+
+```fsharp
+let anotherIntIVar = IVar<int>()
+tryFillAndRead anotherIntIVar 42
+tryFillAndRead anotherIntIVar 10
+```
+
+We won't get any error and the value that we use to fill for the second time will be silently ignored.
+
+```bash
+> let anotherIntIVar = IVar<int>()
+- tryFillAndRead anotherIntIVar 42
+- tryFillAndRead anotherIntIVar 10
+- ;;
+42
+42
+val anotherIntIVar : IVar<int>
+val it : unit = ()
+```
+
+The last thing that we need to explore before getting into the implementation of Ticker is, the return type of `IVar.read` function is `Alt<'a>`.  
+
+So, we can use it to choose use between any other `Alt`. 
+
+Say, for an example, if we want a `IVar` value to be available in a certain amout of time and do something else if it didn't available, we can achieve it like this.
+
+{callout="yes"}
+```fsharp
+open Hopac.Infixes
+
+// int -> IVar<'a> -> unit
+let readOrTimeout delayInMillis iVar =
+
+  let timeOutAlt = // Alt<unit>
+    timeOutMillis delayInMillis 
+    |> Alt.afterFun (fun _ -> printfn "time out!") <1>
+  
+  let readAlt = // Alt<unit>
+    IVar.read iVar
+    |> Alt.afterFun (printfn "%A") <2>
+  
+  timeOutAlt <|> readAlt <3>
+  |> run
+```
+
+<1> `Alt<unit>` that prints a time-out after given time delay
+
+<2> Prints the value of `iVar` as soon as it is available
+
+<3> Chooses between `timeOutAlt` and `readAlt` and commits to whatever completes first
+
+If we fill a `iVar` value and run this function 
+
+```fsharp
+let yetAnotherIntIVar = IVar<int>()
+tryFillAndRead yetAnotherIntIVar 10
+readOrTimeout 1000 intIVar
+```
+
+We can see the value of `IVar` in the output
+
+```bash
+> let yetAnotherIntIVar = IVar<int>()
+- tryFillAndRead yetAnotherIntIVar 10
+- readOrTimeout 1000 intIVar
+- ;;
+10
+10
+val yetAnotherIntIVar : IVar<int>
+val it : unit = ()
+```
+
+If we try the `readOrTimeout` function, with a new `IVar` value, we will be seeing the time-out message
+
+```fsharp
+#time "on"
+readOrTimeout 2000 (IVar<unit>())
+#time "off"
+```
+
+```bash
+--> Timing now on
+time out!
+Real: 00:00:02.001, CPU: 00:00:00.004, GC gen0: 0, gen1: 0
+val it : unit = ()
+--> Timing now off
+```
+
+With this we are wrapping up our exploration on `IVar`
+
+
+## The Ticker Type
