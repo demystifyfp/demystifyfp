@@ -1,17 +1,16 @@
 ---
 title: "Concurrent Programming in Fsharp Using Hopac - Part 6"
 date: 2018-04-25T21:03:26+05:30
-draft: true
 tags : ["fsharp", "Hopac", "concurrent-programming"]
 ---
 
 Hi there!
 
-Welcome back to the sixth part of my blog series on concurrent programming. In this part, we are going to learn how to deal with state changes while doing concurrent programming through a fun example. 
+Welcome back to the sixth part of my blog series on concurrent programming in fsharp. In this part, we are going to learn how to deal with state changes while doing concurrent programming through a fun example. 
 
 ## Time Bomb Simulator
 
-The example that we are going to see is a time bomb simulator. It transitions through different states as shown below.
+The example that we are going to see is a time bomb simulator. The time bomb transitions through different states as shown below during its lifecycle.
 
 ![](/img/fsharp/blog/hopac/timebomb_state_transition.png)
 
@@ -237,7 +236,7 @@ Awesome!
 
 Like we see in movies, a time bomb has to have a provision to defuse! Adding this to our `TimeBomb` implementation is straightforward. 
 
-Unlike the real time bomb, instead of providing some random coloured wire to defuse the bomb, we emulate this via random `char`. 
+Unlike the real time bomb, instead of providing some random coloured wire to defuse the bomb, we are going to emulate this via random `char`. 
 
 {callout="yes"}
 ```fsharp
