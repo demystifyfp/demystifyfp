@@ -1,0 +1,50 @@
+---
+title: "Concurrent Programming in Fsharp Using Hopac - Part 7"
+date: 2018-06-12T05:30:26+05:30
+tags: ["fsharp", "Hopac", "concurrent-programming"]
+draft: true
+---
+
+Hello there!
+
+Almost eight years back [Tomas Petricek](https://twitter.com/tomaspetricek) wrote a blog post introducing [BlockingQueueAgent<T>](http://tomasp.net/blog/parallel-extra-blockingagent.aspx/) and followed it up with an [another blog post](http://tomasp.net/blog/parallel-extra-image-pipeline.aspx/) on how to apply it to solve a Image Processing problem using the pipleline concurrency pattern.
+
+In this blog post, we are going to learn how to port this example using Hopac's `BoundedMb` abstraction, aka `Bounded Mailbox`.
+
+## Image processing pipeline
+
+As defined by Tomas in his blog post, the image processing pipeline works as depicted in the below image.
+
+![](/img/fsharp/blog/hopac/image-processing-pipeline.png)
+> Diagram is from the [Parallel Programming with Microsoft 
+.NET book](https://books.google.co.in/books/about/PARALLEL_PROGRAMMING_WITH_MICROSOFT_NET.html?id=dL30ygAACAAJ).
+
+
+> The first phase reads images from the disk and stores them into a temporary buffer. The second phase takes images from the buffer, resizes them and puts them into another buffer. The third phase is similar but it adds noise to the image. 
+
+> Finally, the fourth phase takes images from the last buffer and displays them in the user interface.
+
+> The intermediate buffers have only limited capacity. When a buffer is full, it will block the caller until an item is removed. Similarly, when it is empty, it will block the process that reads images until an item is added. 
+
+> A pipeline introduces parallelism, because all phases can run in parallel. The intermediate buffers provide a good way of controlling the process, because some phases may be faster - in that case, we want to block it after it generates enough inputs for the next phase. 
+
+> **- Tomas Petricek**
+
+
+## Channel V/S Bounded Mailbox
+
+We saw how to [leverage Hopac Channels]({{< relref "concurrent-programming-in-fsharp-using-hopac-part-2.mmark" >}}) `Ch<T>` in the previous blog posts to communicate between two concurrent Jobs. 
+
+In communication via Channels, the producer `give` the message to the Channel (`Ch<T>`) and **waits until** a consumer `take` it from the Channel (`Ch<T>`)
+
+![](/img/fsharp/blog/hopac/hopac-ch-mechanism.png)
+
+In this case, if the consumer is slow in taking up the message from the channel, the producer is blocked. 
+
+In Hopac, Bounded Mailbox is similar to Channels except that it introduces a buffer between the producer and the consumer. It also provide [back-pressure](https://ferd.ca/queues-don-t-fix-overload.html) in the form of blocking producers when consumers cannot keep up.
+
+![](/img/fsharp/blog/hopac/bounded_mb_intro.png)
+
+With this understanding, let's jump in and put it in action!
+
+> NOTE: There is also a variant called `send` in Channel (available via `Ch.send`) which puts the message into the channel and **doesn't wait** for the consumer to `take`.
