@@ -1,5 +1,5 @@
 $(function(){
-  $(".dropdown-menu a").attr('target', '_blank');
+  $("a").attr('target', '_blank');
   $("b.conum").each(function(i, e){
     var $e = $(e)
     var content = $e.html().replace("(","").replace(")","")
