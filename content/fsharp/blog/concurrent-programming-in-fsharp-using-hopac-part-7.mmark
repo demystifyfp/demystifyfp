@@ -7,7 +7,7 @@ draft: true
 
 Hello there!
 
-Almost eight years back [Tomas Petricek](https://twitter.com/tomaspetricek) wrote a blog post introducing [BlockingQueueAgent<T>](http://tomasp.net/blog/parallel-extra-blockingagent.aspx/) and followed it up with an [another blog post](http://tomasp.net/blog/parallel-extra-image-pipeline.aspx/) on how to apply it to solve a Image Processing problem using the pipleline concurrency pattern.
+Almost eight years back [Tomas Petricek](https://twitter.com/tomaspetricek) wrote a blog post introducing [BlockingQueueAgent<T>](http://tomasp.net/blog/parallel-extra-blockingagent.aspx/) and followed it up with [another blog post](http://tomasp.net/blog/parallel-extra-image-pipeline.aspx/) on how to apply it to solve an Image Processing problem using the pipeline concurrency pattern.
 
 In this blog post, we are going to learn how to port this example using Hopac's `BoundedMb` abstraction, aka `Bounded Mailbox`.
 
@@ -41,7 +41,7 @@ In communication via Channels, the producer `give` the message to the Channel (`
 
 In this case, if the consumer is slow in taking up the message from the channel, the producer is blocked. 
 
-In Hopac, Bounded Mailbox is similar to Channels except that it introduces a buffer between the producer and the consumer. It also provide [back-pressure](https://ferd.ca/queues-don-t-fix-overload.html) in the form of blocking producers when consumers cannot keep up.
+In Hopac, Bounded Mailbox is similar to Channels except that it introduces a buffer between the producer and the consumer. It also provides [back-pressure](https://ferd.ca/queues-don-t-fix-overload.html) in the form of blocking producers when consumers cannot keep up.
 
 ![](/img/fsharp/blog/hopac/bounded_mb_intro.png)
 
@@ -51,7 +51,7 @@ With this understanding, let's jump in and put it in action!
 
 ## The Image Job
 
-Let's define two types to represent an image and a image Job
+Let's define two types to represent an image and an image Job
 
 ```fsharp
 type Image = Image of string
@@ -84,20 +84,20 @@ let displayImage = imageJob 500 "Displaying"
 
 Then using the `imageJob` function, we define the three fake image jobs with different delays. 
 
-When we run these jobs, we'll get an output similar to the below one.
+When we run these jobs, we'll get an output similar to the below one for a single image *Foo.png*.
 
 ```plain
 Scaling Started: Foo.png
 Scaling Completed: Foo.png [Scaling]
-Scaling Started: Foo.png
-Scaling Completed: Foo.png [Scaling]
+Filtering Started: Foo.png [Scaling]
+Filtering Completed: Foo.png [Scaling] [Filtering]
 Displaying Started: Foo.png [Scaling] [Filtering]
 Displaying Completed: Foo.png [Scaling] [Filtering] [Displaying]
 ```
 
 ## BoundedMb In Action
 
-Let's create a new type `BoundedWorker` to define the worker job that is going to run the Image Jobs that we defined in the previous step.
+Let's create a new type `BoundedWorker` to define the worker job that is going to run the Image Jobs that we described in the previous step.
 
 ```fsharp
 type BoundedWorker (queueLength, f : ImageJob) =
@@ -105,20 +105,21 @@ type BoundedWorker (queueLength, f : ImageJob) =
   member __.InMb = inMb
 ```
 
-This `BoundedWorker` receives its queue length and the `ImageJob` it has to perform as its inputs in the constructor and intitialize its internal mailbox `inMb` with the provided queue length. It also exposes this `inMb` to the outside world via the getter property `InMb`. 
+This `BoundedWorker` receives its queue length and the `ImageJob` it has to perform as its inputs and intitialize its internal mailbox `inMb` with the provided queue length. It also exposes this `inMb` to the outside world via the getter property `InMb`. 
 
 Then define a new method `CreateJob` which will create a job that retrieves a image from its input mailbox `inMb`, runs the image job and put the result back to the output mailbox `outMb`.
 
 ```fsharp
 type BoundedWorker (queueLength, f : ImageJob) =
   // ...
+  // BoundedMb<Image> -> Job<unit>
   member __.CreateJob (outMb : BoundedMb<Image>) =
     BoundedMb.take inMb
     |> Alt.afterJob f
     |> Alt.afterJob (BoundedMb.put outMb)
 ```
 
-You can witness a notable difference between the programming models of Hopac and [Actor](https://en.wikipedia.org/wiki/Actor_model) here. In the `BlockingQueueAgent` (an implementation based on Actor model) case, the `Consumer` has to have a reference of the `Producer`.
+You can recognise a difference between the programming models of Hopac and [Actor](https://en.wikipedia.org/wiki/Actor_model) here. In the `BlockingQueueAgent` (an implementation based on Actor model) case, the `Consumer` has to have a reference of the `Producer`.
 
 ```fsharp
 // Code Copied from http://tomasp.net/blog/parallel-extra-image-pipeline.aspx/
@@ -138,4 +139,125 @@ let displayPipelinedImages = async {
   // ...
 ```
 
-In our example using Hopac, the consumer and the producer are completely decoupled thanks to the `BoundedMb`.
+In our example using Hopac, the consumer and the producer are completely decoupled through `BoundedMb`.
+
+The current implementation of `CreateJob` method will work only for the first image as we are taking the image only at the beginning using `BoundedMb.take`. To run the `Job` for all the images in the `inMb`, we need to make the following change.
+
+```diff
+type BoundedWorker (queueLength, f : ImageJob) =
+  // ...
+
+- // BoundedMb<Image> -> Job<unit>
++ // int * BoundedMb<Image> -> Job<unit>
+- member __.CreateJob (outMb : BoundedMb<Image>) =
++ member __.CreateJob (imageCount: int, outMb : BoundedMb<Image>) =
+    BoundedMb.take inMb
+    |> Alt.afterJob f
+    |> Alt.afterJob (BoundedMb.put outMb)
++   |> Job.forN imageCount
+```
+
+> `Job.forN` - Creates a job that runs the given job sequentially the given number of times.
+
+We also need to account for a particular case wherein the `Display Image` stage doesn't put the processed output into `outMb`. 
+
+Let's create another method to address this. 
+
+```fsharp
+type BoundedWorker (queueLength, f : ImageJob) =
+  // ...
+  // int -> Job<unit>
+  member __.CreateJob (imageCount: int) =
+    BoundedMb.take inMb
+    |> Alt.afterJob f
+    |> Alt.afterJob (fun _ -> ())
+    |> Job.forN imageCount
+```
+
+## Loading Image
+
+Let's turn our attention to load the images and put them into a `BoundedMb`.
+
+
+```fsharp
+// BoundedMb<'a> -> 'a list -> Alt<unit>
+let rec loadImages inMb inputs =
+  match inputs with
+  | [] -> Alt.always ()
+  | x :: xs ->
+    BoundedMb.put inMb x
+    |> Alt.afterJob (fun _ -> loadImages inMb xs)
+```
+
+The `loadImages` function recursively iterates the given list and `put` each element into the given bounded mailbox `inMb`. 
+
+
+## The Pipeline
+
+![](/img/fsharp/blog/hopac/pipeline_domino.jpg)
+
+Now we have all the essential things; it is time to line them up and get the job done!
+
+{callout="yes"}
+```fsharp
+// Image list -> Job<unit>
+let pipeline images = 
+  let imagesCount = List.length images 
+  let queueLength = 3
+
+  let imageScaler = BoundedWorker(queueLength, scaleImage) 
+  let imageFilterer = BoundedWorker(queueLength, filterImage)
+  let imageDisplayer = BoundedWorker(queueLength, displayImage)
+  
+  loadImages imageScaler.InMb images |> start <1>
+
+  [ imageScaler.CreateJob(imagesCount, imageFilterer.InMb)
+    imageFilterer.CreateJob(imagesCount,  imageDisplayer.InMb)
+    imageDisplayer.CreateJob(imagesCount)] <2>
+  |> Job.conIgnore <3>
+```
+
+<1> Loads the provided images into the `imageScaler`'s `InMb`.
+
+<2> Creates three Jobs by providing the `imageFilterer`'s `InMb` to `imageScaler`, `imageDisplayer`'s `InMb` to `imageFilterer`
+
+<3> Runs all the three jobs parallelly and waits for all them to complete using `Job.conIgnore`.
+
+
+If we run this pipeline with below input,
+
+```fsharp
+let images = [Image "Foo.png"; Image "Bar.png";Image "Baz.png"] 
+
+#time "on"
+pipeline images |> run
+#time "off"
+```
+
+We'll get the following output.
+
+```
+Scaling Started: Foo.png
+Scaling Completed: Foo.png [Scaling]
+Scaling Started: Bar.png
+Filtering Started: Foo.png [Scaling]
+Filtering Completed: Foo.png [Scaling] [Filtering]
+Displaying Started: Foo.png [Scaling] [Filtering]
+Scaling Completed: Bar.png [Scaling]
+Scaling Started: Baz.png
+Filtering Started: Bar.png [Scaling]
+Displaying Completed: Foo.png [Scaling] [Filtering] [Displaying]
+Filtering Completed: Bar.png [Scaling] [Filtering]
+Displaying Started: Bar.png [Scaling] [Filtering]
+Displaying Completed: Bar.png [Scaling] [Filtering] [Displaying]
+Scaling Completed: Baz.png [Scaling]
+Filtering Started: Baz.png [Scaling]
+Filtering Completed: Baz.png [Scaling] [Filtering]
+Displaying Started: Baz.png [Scaling] [Filtering]
+Displaying Completed: Baz.png [Scaling] [Filtering] [Displaying]
+Real: 00:00:08.065, CPU: 00:00:00.085, GC gen0: 0, gen1: 0
+```
+
+## Summary
+
+In this blog post, we saw how to use `BoundedMb` in Hopac to develop concurrent programs. Also, we have seen the difference between the Actor Programming Model and Concurrent ML, a programming model used by Hopac. The source code associated with this blog post is available on [GitHub](https://github.com/demystifyfp/BlogSamples/blob/0.9/fsharp/HopacSeries/Part7/script.fsx).
