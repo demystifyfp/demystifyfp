@@ -6,15 +6,15 @@
 <div class="row">
   <div class="col-xs-12 col-md-4 section-heading">
 
-    <h1>{{ with $page.Title }}{{ . | markdownify }}{{ end }}</h1>
+    <h3>{{ with $page.Title }}{{ . | markdownify }}{{ end }}</h3>
     {{ with $page.Params.subtitle }}<p>{{ . | markdownify }}</p>{{ end }}
     {{ if gt $posts_len $page.Params.count }}
-    <p class="view-all">
-      <a href="{{ "/post/" | relLangURL }}">
+    <h4 class="view-all">
+      <a href="{{ printf "%s/%s" "/tags" $page.Params.folder }}">
         {{ i18n "more_posts" | markdownify }}
         <i class="fa fa-angle-double-right"></i>
       </a>
-    </p>
+    </h4>
     {{ end }}
 
   </div>

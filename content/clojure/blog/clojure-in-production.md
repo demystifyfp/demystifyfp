@@ -1,11 +1,14 @@
----
-title: "Using Clojure in Production"
-date: 2018-09-26T11:25:01+05:30
-draft: true
-tags : ["clojure"]
----
++++
+title = "Using Clojure in Production"
+date = 2018-09-26T11:25:01+05:30
+draft = true
+tags = ["clojure"]
 
-We at [Ajira](www.ajira.tech) successfully delivered our first project in [Clojure](https://clojure.org). It was an impressive outing for the last eight weeks! We were able to deliver some complex features with ease because of the outstanding data-oriented programming features provided by Clojure. 
+[header]
+image = "clojure/blog/clj-in-prod/cover.png"
++++
+
+We at [Ajira](www.ajira.tech) successfully delivered our first project in [Clojure](https://clojure.org) recently. It was an impressive outing for the last eight weeks! We were able to deliver some complex features with ease because of the outstanding data-oriented programming features provided by Clojure. 
 
 This blog post summarizes our experiences.
 
@@ -19,7 +22,11 @@ In a nutshell, there is no fixed domain or domain model, and configuration drive
 
 After going through a [lean inception](https://martinfowler.com/articles/lean-inception) with the client, we found that the critical piece that we have to solve is dynamically creating the SQL queries based on some configuration and transform the shape of the returned data. 
 
-Since the entire application is going to be dynamic and driven by configuration, we decided that a [dynamic programming language](https://en.wikipedia.org/wiki/Dynamic_programming_language) would be an ideal fit and the contenders were Javascript (Node.js) & Clojure. To chose the opt language, we took the dynamic SQL generation part and did a [spike](https://en.wikipedia.org/wiki/Spike_(software_development)) on both Node.js & Clojure. Within half a day, we were able to solve it with ease in Clojure and even picked another piece for the spike and completed that as well. The Node.js implementation took a day. Upon completion, we compared both the codebase and decided unanimously to go ahead with Clojure and got a nod from client too!
+Since the entire application is going to be dynamic and driven by configuration, we decided that a [dynamic programming language](https://en.wikipedia.org/wiki/Dynamic_programming_language) would be an ideal fit and the contenders were Javascript (Node.js) & Clojure. 
+
+To chose the opt language, we took the dynamic SQL generation part and did a [spike](https://en.wikipedia.org/wiki/Spike_(software_development)) on both Node.js & Clojure. Within half a day, we were able to solve it with ease in Clojure and even picked another piece for the spike and completed that as well. The Node.js implementation took a day. 
+
+Upon completion, we compared both the codebase and decided unanimously to go ahead with Clojure and got a nod from client too!
 
 It turned out to be an excellent decision.
 
@@ -60,13 +67,11 @@ I also liked the Clojure's way (Rich Hickey's way to be precise) approaching the
 
 I never felt like that I am missing the type system while working with Clojure!
 
-We have used [Schema](https://github.com/plumatic/schema) to define the shape of the data that we were passing around, and We also had a decent test coverage. 
-
 ## Libraries & Tools - Made Our Job Easier
 
 #### [Compojure API](https://github.com/metosin/compojure-api) 
 
-Apart from its simplicity on exposing HTTP APIs, its support for Swagger API documentation generation was very handy. We have also leveraged its [input data coercion](https://github.com/metosin/compojure-api/wiki/Coercion) ability using Schema.  
+Apart from its simplicity on exposing HTTP APIs, its support for Swagger API documentation generation was very handy. We have also leveraged its [input data coercion](https://github.com/metosin/compojure-api/wiki/Coercion) ability using [Schema](https://github.com/plumatic/schema). 
 
 #### [Toucan](https://github.com/metabase/toucan)
 

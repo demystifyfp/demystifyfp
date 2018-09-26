@@ -156,13 +156,13 @@ defaultContentLanguageInSubdir = false
 
 [[menu.main]]
   name = "Clojure"
-  url = "/tags/clojure"
+  url = "#clojure-posts"
   parent = "posts"
   weight = 22
 
 [[menu.main]]
   name = "F#"
-  url = "/tags/fsharp"
+  url = "#fsharp-posts"
   parent = "posts"
   weight = 21
 
