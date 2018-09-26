@@ -151,7 +151,21 @@ defaultContentLanguageInSubdir = false
 [[menu.main]]
   name = "Posts"
   url = "#posts"
+  identifier = "posts"
   weight = 2
+
+[[menu.main]]
+  name = "Clojure"
+  url = "/tags/clojure"
+  parent = "posts"
+  weight = 22
+
+[[menu.main]]
+  name = "F#"
+  url = "/tags/fsharp"
+  parent = "posts"
+  weight = 21
+
 
 [[menu.main]]
   name = "Books"
