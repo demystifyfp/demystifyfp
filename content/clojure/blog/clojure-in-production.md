@@ -1,7 +1,6 @@
 +++
 title = "Using Clojure in Production"
 date = 2018-09-26T11:25:01+05:30
-draft = true
 tags = ["clojure"]
 
 [header]
@@ -45,13 +44,21 @@ Another thing that I’d like to highlight, the process of transforming the ment
 
 Just by using Clojure’s [Map](https://clojure.org/reference/data_structures#Maps), [Vector](https://clojure.org/reference/data_structures#Vectors) and its core library functions we were able to achieve a lot. It also helped us seamlessly to deliver what the client wants. 
 
-### HoneySQL
+## Threading Macros 
 
-As mentioned earlier, the core engine of our product has to generate a SQL query based on a configuration. The configuration data was represented using Clojure's data structures and what we wanted was a process to transform them into SQL.  [HoneySQL](https://github.com/jkk/honeysql#honey-sql) exactly does this. 
+[Threading macros](https://clojure.org/guides/threading_macros) in Clojure is another outstanding part of the core library, and it helped us a lot in achieving better code organisation and readability. 
 
-That platform had different kinds of widgets like charts, tables, add-edit forms. We made the configuration data of these widgets to specify their underlying database schema in a uniformed way and created [a single layer of abstraction](http://principles-wiki.net/principles:single_level_of_abstraction) that takes this unified representation and used HoneySQL to generate the SQL query.
+In F#, I have used the [pipeline operator](https://msdn.microsoft.com/en-us/visualfsharpdocs/conceptual/operators.%5b-h%5d-%5d%5b't1,'u%5d-function-%5bfsharp%5d) to a great extent. While using it, I sometimes faced problems in defining the parameter order of functions that I am pipelining. 
 
-The [extensibility](https://github.com/jkk/honeysql#extensibility) feature provided by HoneySQL was advantageous, and we leveraged it a lot!
+A parameter order of a function `f1` that made sense in one context did not work well with pipelining in another context. So, I need to either change the parameter type or make use of the flip function to do an ephemeral swap of parameters or break the pipelining with a new intermediate binding and then continuing with a new pipelining. All these options break the elegance and readability that we get from pipelining. 
+
+In Clojure, I never had this problem due to the `as->` macro. We have used `->` and `->>` macros most of the time and the `as->` macro in the places where the function's parameter order are different.  
+
+## Destructing & Pattern Matching
+
+Apart from the pipeline operator, the things that I enjoyed a lot while coding in F# are destructing and pattern matching. Clojure is right on the money on these features. Due to the dynamic type system and the LISP syntax, It is even more enjoyable in Clojure. 
+
+The [clojure.match](https://github.com/clojure/core.match/wiki/Overview) library had all the bells and whistles that we needed for doing pattern matching. 
 
 ## Strongly Type vs Dynamic Type
 
@@ -67,11 +74,19 @@ I also liked the Clojure's way (Rich Hickey's way to be precise) approaching the
 
 I never felt like that I am missing the type system while working with Clojure!
 
-## Libraries & Tools - Made Our Job Easier
+## Libraries That Made Our Job Easier
+
+#### [HoneySQL](https://github.com/jkk/honeysql#honey-sql)
+
+As mentioned earlier, the core engine of our product has to generate a SQL query based on a configuration. The configuration data was represented using Clojure's data structures and what we wanted was a process to transform them into SQL.  [HoneySQL](https://github.com/jkk/honeysql#honey-sql) exactly does this. 
+
+That platform had different kinds of widgets like charts, tables, add-edit forms. We made the configuration data of these widgets to specify their underlying database schema in a uniformed way and created [a single layer of abstraction](http://principles-wiki.net/principles:single_level_of_abstraction) that takes this unified representation and used HoneySQL to generate the SQL query.
+
+The [extensibility](https://github.com/jkk/honeysql#extensibility) feature provided by HoneySQL was advantageous, and we leveraged it a lot! For example, HoneySQL does not have inherent support for `ilike` clause in Postgres. We just added an extension method with a couple of lines, and it worked like a charm.
 
 #### [Compojure API](https://github.com/metosin/compojure-api) 
 
-Apart from its simplicity on exposing HTTP APIs, its support for Swagger API documentation generation was very handy. We have also leveraged its [input data coercion](https://github.com/metosin/compojure-api/wiki/Coercion) ability using [Schema](https://github.com/plumatic/schema). 
+Apart from its simplicity on exposing HTTP APIs, its support for Swagger API documentation generation was very handy. We have also leveraged its [input data coercion](https://github.com/metosin/compojure-api/wiki/Coercion) ability using [Schema](https://github.com/plumatic/schema). Defining nested specs for complex domain models was a breeze due to LISP’s inherent composability
 
 #### [Toucan](https://github.com/metabase/toucan)
 
@@ -86,6 +101,17 @@ We just loved this library. We had standard CRUD operations for dealing with app
 * JSON - [Cheshire](https://github.com/dakrone/cheshire)
 * Database Connection Pooling - [Hikari](https://github.com/tomekw/hikari-cp)
 * Amazon SES Client - [SES Mailer](https://github.com/jstaffans/ses-mailer)
+
+## Tools
+
+#### [VS Code Calva](https://marketplace.visualstudio.com/items?itemName=cospaia.clojure4vscode)
+
+The creators of Calva has done an amazing work on bringing Emacs CIDER experience to VS Code. Along with the [Bracket Pair Colorizer](https://marketplace.visualstudio.com/items?itemName=CoenraadS.bracket-pair-colorizer), our development workflow went smooth.  
+
+
+#### [cljfmt](https://github.com/weavejester/cljfmt) & [Eastwood](https://github.com/jonase/eastwood)
+
+To ensure everybody in the team follows the same style & formatting of the Clojure code, we have used `cljfmt` & Eastwood in the build pipeline. 
 
 ## Summary
 
