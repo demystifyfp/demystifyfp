@@ -52,7 +52,9 @@ In F#, I have used the [pipeline operator](https://msdn.microsoft.com/en-us/visu
 
 A parameter order of a function `f1` that made sense in one context did not work well with pipelining in another context. So, I need to either change the parameter type or make use of the flip function to do an ephemeral swap of parameters or break the pipelining with a new intermediate binding and then continuing with a new pipelining. All these options break the elegance and readability that we get from pipelining. 
 
-In Clojure, I never had this problem due to the `as->` macro. We have used `->` and `->>` macros most of the time and the `as->` macro in the places where the function's parameter order are different.  
+In Clojure, I never had this problem due to the `as->` macro. 
+
+We have used `->` and `->>` macros most of the time and the `as->` macro in the places where the function's parameter order are different.  
 
 ## Destructing & Pattern Matching
 
