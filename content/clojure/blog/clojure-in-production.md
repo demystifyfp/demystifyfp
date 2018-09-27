@@ -7,7 +7,7 @@ tags = ["clojure"]
 image = "clojure/blog/clj-in-prod/cover.png"
 +++
 
-We at [Ajira](www.ajira.tech) successfully delivered our first project in [Clojure](https://clojure.org) recently. It was an impressive outing for the last eight weeks! 
+We at [Ajira](https://www.ajira.tech) successfully delivered our first project in [Clojure](https://clojure.org) recently. It was an impressive outing for the last eight weeks! 
 
 We were able to deliver some complex features with ease because of the outstanding data-oriented programming features provided by Clojure. This blog post summarizes our experiences.
 
