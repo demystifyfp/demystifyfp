@@ -62,7 +62,7 @@ Apart from the pipeline operator, the things that I enjoyed a lot while coding i
 
 The [clojure.match](https://github.com/clojure/core.match/wiki/Overview) library had all the bells and whistles that we needed for doing pattern matching. 
 
-## Strongly Type vs Dynamic Type
+## Static Type vs Dynamic Type
 
 I have written production systems in C#, F#, Golang & Kotlin in the last nine years and I have been using functional programming principles to develop software for the previous four years. 
 
