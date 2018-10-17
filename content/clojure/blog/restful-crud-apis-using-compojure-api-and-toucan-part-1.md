@@ -70,7 +70,7 @@ Toucan requires us to provide two information to initialise itself
 The right place to do this configuration is during application bootstrap.
 
 ```clojure
-; src/resultful_crud/core.clj
+; src/restful_crud/core.clj
 (ns resultful-crud.core
   (:require [toucan.db :as db]
             [toucan.models :as models])
@@ -93,7 +93,7 @@ The right place to do this configuration is during application bootstrap.
 Then create a new folder *models* in *src/restful_crud* directory and add a new file *user.clj*
 
 ```clojure
-; src/resultful_crud/models/user.clj
+; src/restful_crud/models/user.clj
 (ns resultful-crud.models.user
   (:require [toucan.models :refer [defmodel]]))
 
@@ -115,7 +115,7 @@ Here are the constraints that we have for the domain entity.
 To incorporate this check, let's add some utility functions. 
 
 ```clojure
-; src/resultful_crud/string_util.clj
+; src/restful_crud/string_util.clj
 
 (ns resultful-crud.string-util
   (:require [clojure.string :as str]))
@@ -144,7 +144,7 @@ To incorporate this check, let's add some utility functions.
 And then use these functions to define a schema for `UserRequest`
 
 ```clojure
-; cat src/resultful_crud/user.clj
+; cat src/restful_crud/user.clj
 (ns resultful-crud.user
   (:require [schema.core :as s]
             [resultful-crud.string-util :as str]))
@@ -168,7 +168,7 @@ Now we have a Schema for the user, and it is time to create our first API for cr
 Let's start this by adding a handler function that takes a create user request and persist it in the database using Toucan.
 
 ```clojure
-; cat src/resultful_crud/user.clj
+; cat src/restful_crud/user.clj
 (ns resultful-crud.user
   (:require ; ...
             [resultful-crud.models.user :refer [User]]
@@ -209,7 +209,7 @@ The `create-user-handler` function takes a `create-user-req` a coerced version o
 The next step is wiring up this handler with a Compojure-api route.
 
 ```clojure
-; cat src/resultful_crud/user.clj
+; cat src/restful_crud/user.clj
 (ns resultful-crud.user
   (:require ; ...
             [compojure.api.sweet :refer [POST]]))
@@ -224,7 +224,7 @@ The next step is wiring up this handler with a Compojure-api route.
 Finally, using the `ring-jetty` adapter, we are going to expose this route as an HTTP API
 
 ```clojure
-; cat src/resultful_crud/core.clj
+; cat src/restful_crud/core.clj
 (ns resultful-crud.core
   (:require ; ...
             [ring.adapter.jetty :refer [run-jetty]]
@@ -245,7 +245,7 @@ Finally, using the `ring-jetty` adapter, we are going to expose this route as an
 The next API is getting a user by his/her `id`. As we did earlier, create a handler for getting a user by id and wire it up in a route.
 
 ```clojure
-; cat src/resultful_crud/user.clj
+; cat src/restful_crud/user.clj
 (ns resultful-crud.user
   (:require ; ...
             [compojure.api.sweet :refer [POST GET]]
@@ -274,7 +274,7 @@ We can repeat the similar approach for the other APIs as below.
 ## Get Users API
 
 ```clojure
-; cat src/resultful_crud/user.clj
+; cat src/restful_crud/user.clj
 ; ...
 (defn get-users-handler []
   (->> (db/select User)
@@ -290,7 +290,7 @@ We can repeat the similar approach for the other APIs as below.
 ## Update User API
 
 ```clojure
-; cat src/resultful_crud/user.clj
+; cat src/restful_crud/user.clj
 (ns resultful-crud.user
   (:require ; ...
             [compojure.api.sweet :refer [POST GET PUT]]))
@@ -311,7 +311,7 @@ We can repeat the similar approach for the other APIs as below.
 ## Delete User API
 
 ```clojure
-; cat src/resultful_crud/user.clj
+; cat src/restful_crud/user.clj
 (ns resultful-crud.user
   (:require ; ...
             [compojure.api.sweet :refer [POST GET PUT DELETE]]))
@@ -333,7 +333,7 @@ We can repeat the similar approach for the other APIs as below.
 Compojure API offers Swagger integration out of the box. To wire it up we just need to wrap the app with `api` function with a swagger configuration.
 
 ```clojure
-; cat src/resultful_crud/core.clj
+; cat src/restful_crud/core.clj
 (ns resultful-crud.core
   (:require ; ...
             [compojure.api.sweet :refer [api routes]]))

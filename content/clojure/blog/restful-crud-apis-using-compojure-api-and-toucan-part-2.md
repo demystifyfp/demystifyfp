@@ -32,7 +32,7 @@ restful-crud:>
 The next step after creating a `book` table is to create a [Toucan model](https://github.com/metabase/toucan/blob/master/docs/defining-models.md).
 
 ```clojure
-; src/resultful_crud/models/book.clj
+; src/restful_crud/models/book.clj
 (ns resultful-crud.models.book
   (:require [toucan.models :refer [defmodel]]))
 
@@ -42,7 +42,7 @@ The next step after creating a `book` table is to create a [Toucan model](https:
 Then create a schema for `Book`
 
 ```clojure
-; src/resultful_crud/book.clj
+; src/restful_crud/book.clj
 (ns resultful-crud.book
   (:require [schema.core :as s]
             [resultful-crud.string-util :as str]))
@@ -61,7 +61,7 @@ Then create a schema for `Book`
 To expose the CRUD APIs let's repeat what we did for `User`.
 
 ```clojure
-; src/resultful_crud/book.clj
+; src/restful_crud/book.clj
 (ns resultful-crud.book
   (:require ; ...
             [resultful-crud.models.book :refer [Book]]
@@ -124,7 +124,7 @@ To expose the CRUD APIs let's repeat what we did for `User`.
 The last step is exposing these routes as HTTP endpoints.
 
 ```diff
-; src/resultful_crud/core.clj
+; src/restful_crud/core.clj
 (ns resultful-crud.core
   (:require 
 +           [resultful-crud.book :refer [book-routes]]))
