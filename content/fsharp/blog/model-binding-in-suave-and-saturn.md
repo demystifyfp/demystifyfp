@@ -1,7 +1,6 @@
 ---
 title: "Model Binding in Suave and Saturn"
 date: 2018-12-17T20:50:23+05:30
-draft: true
 tags: ["fsharp", "suave", "saturn"]
 ---
 
