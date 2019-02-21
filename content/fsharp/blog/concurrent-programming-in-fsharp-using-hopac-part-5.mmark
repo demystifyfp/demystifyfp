@@ -42,7 +42,7 @@ let fillAndRead iVar value =
   |> run // unit
 ```
 
-As the name indicates, the `fillAndRead` is a function fills the given write-once variable `iVar` with the provided `value`, and then reads the `value` from the `iVar`. Finally the prints the value. 
+As the name indicates, the `fillAndRead` is a function fills the given write-once variable `iVar` with the provided `value`, and then reads the `value` from the `iVar`.
 
 <1> The `IVar.fill` function creates a job that writes the given value to the given write-once variable. 
 ```fsharp
