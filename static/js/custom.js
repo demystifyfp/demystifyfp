@@ -9,13 +9,6 @@ $(function () {
   })
   $(".colist").children('ol').addClass('custom-counter')
 
-  $("code.language-clojure").each(function (i, e) {
-    var level = 0;
-    $(e).children("span.token.punctuation").each(function (i, t) {
-      console.log($(t).html())
-    })
-  });
-
   var level = 0
   Prism.hooks.add('wrap', function (env) {
     if (env.language == "clojure" && env.type == "punctuation") {
