@@ -23,9 +23,9 @@ In the [part-1]({{< relref "concurrent-programming-in-fsharp-using-hopac-part-1.
 ```fsharp
 // int -> int -> Job<unit>
 let createJob jobId delayInMillis = job {
-  printfn "starting job:%d" jobId <1>
-  do! timeOutMillis delayInMillis <2>
-  printfn "completed job:%d" jobId <3>
+  printfn "starting job:%d" jobId // <1>
+  do! timeOutMillis delayInMillis // <2>
+  printfn "completed job:%d" jobId // <3>
 }
 
 // Job<unit> list
@@ -42,7 +42,7 @@ run concurrentJobs
 
 The `job` created by the `createJob` function does two things. 
 
-<1> & <3> - prints the status of the job 
+<1> & // <3> - prints the status of the job 
 
 <2> - perform the actual computation (simulated using delay)
 
@@ -89,13 +89,13 @@ Then refactor the `createJob` function as below
 ```fsharp
 // Ch<JobStatus> -> int -> Job<unit>
 let createJob jobStatusChannel jobId = job {
-  do! Ch.give jobStatusChannel (Started jobId) <1>
-  do! timeOutMillis (jobId * 1000) <2>
-  do! Ch.give jobStatusChannel (Completed jobId) <3>
+  do! Ch.give jobStatusChannel (Started jobId) // <1>
+  do! timeOutMillis (jobId * 1000) // <2>
+  do! Ch.give jobStatusChannel (Completed jobId) // <3>
 }
 ```
 
-<1> & <3> - Communicate the job status through channels instead of printing
+<1> & // <3> - Communicate the job status through channels instead of printing
 
 <2> - Simulates a long computation. (Job id `1` takes one second, `2` takes two seconds and so on)
 
@@ -112,7 +112,7 @@ Our next step is creating another `job` which makes use of this function to take
 ```fsharp
 // Ch<JobStatus> -> Job<unit>
 let jobStatusPrinterJob jobStatusChannel = job {
-  let! jobStatus = Ch.take jobStatusChannel <1>
+  let! jobStatus = Ch.take jobStatusChannel // <1>
   match jobStatus with
   | Started jobId ->
     printfn "starting job:%d" jobId
@@ -131,10 +131,10 @@ The final step is wire up jobs that we created so far.
 ```fsharp
 // Ch<JobStatus> -> int -> Job<unit>
 let main jobStatusChannel jobsCount = job {
-  let jobStatusPrinter = jobStatusPrinterJob jobStatusChannel <1>
-  do! Job.foreverServer jobStatusPrinter <2>
-  let myJobs = List.init jobsCount (createJob jobStatusChannel) <3>
-  return! Job.conIgnore myJobs <4>
+  let jobStatusPrinter = jobStatusPrinterJob jobStatusChannel // <1>
+  do! Job.foreverServer jobStatusPrinter // <2>
+  let myJobs = List.init jobsCount (createJob jobStatusChannel) // <3>
+  return! Job.conIgnore myJobs // <4>
 }
 ```
 

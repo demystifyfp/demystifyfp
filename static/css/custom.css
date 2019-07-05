@@ -1,56 +1,11 @@
-/* cyrillic-ext */
 @font-face {
-  font-family: 'Lora';
-  font-style: normal;
-  font-weight: 400;
-  src: local('Lora Regular'), local('Lora-Regular'), url(https://fonts.gstatic.com/s/lora/v11/bAULWXoql4X5j5Aw1uK9-xTbgVql8nDJpwnrE27mub0.woff2) format('woff2');
-  unicode-range: U+0460-052F, U+20B4, U+2DE0-2DFF, U+A640-A69F;
-}
-
-/* cyrillic */
-@font-face {
-  font-family: 'Lora';
-  font-style: normal;
-  font-weight: 400;
-  src: local('Lora Regular'), local('Lora-Regular'), url(https://fonts.gstatic.com/s/lora/v11/XXbc_aQtUtjJrkp7pYGEKhTbgVql8nDJpwnrE27mub0.woff2) format('woff2');
-  unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
-}
-
-/* vietnamese */
-@font-face {
-  font-family: 'Lora';
-  font-style: normal;
-  font-weight: 400;
-  src: local('Lora Regular'), local('Lora-Regular'), url(https://fonts.gstatic.com/s/lora/v11/K-CiJV7XKFwuib_fzIdFDRTbgVql8nDJpwnrE27mub0.woff2) format('woff2');
-  unicode-range: U+0102-0103, U+1EA0-1EF9, U+20AB;
-}
-
-/* latin-ext */
-@font-face {
-  font-family: 'Lora';
-  font-style: normal;
-  font-weight: 400;
-  src: local('Lora Regular'), local('Lora-Regular'), url(https://fonts.gstatic.com/s/lora/v11/tHQOv8O1rd82EIrTHlzvmhTbgVql8nDJpwnrE27mub0.woff2) format('woff2');
-  unicode-range: U+0100-024F, U+1E00-1EFF, U+20A0-20AB, U+20AD-20CF, U+2C60-2C7F, U+A720-A7FF;
-}
-
-/* latin */
-@font-face {
-  font-family: 'Lora';
-  font-style: normal;
-  font-weight: 400;
-  src: local('Lora Regular'), local('Lora-Regular'), url(https://fonts.gstatic.com/s/lora/v11/rAXKWvABQNHjPUk26ixVvvesZW2xOQ-xsNqO47m55DA.woff2) format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2212, U+2215;
+  font-family: 'Open Sans';
+  src: url("https://fonts.googleapis.com/css?family=Open+Sans&display=swap");
 }
 
 @font-face {
-  font-family: 'Consolas';
-  src: url("/fonts/Consolas.ttf") format('truetype');
-}
-
-@font-face {
-  font-family: 'Ubuntu Mono';
-  src: url("https://fonts.googleapis.com/css?family=Ubuntu+Mono") format('truetype');
+  font-family: 'Source Code Pro';
+  src: url("https://fonts.googleapis.com/css?family=Source+Code+Pro") format('truetype');
 }
 
 pre {
@@ -62,9 +17,9 @@ h2 {
 }
 
 pre code {
-  font-family: 'Ubuntu Mono', Consolas, monaco, monospace;
-  font-size: 1rem;
-  line-height: 1.5rem;
+  font-family: 'Source Code Pro', Consolas, monaco, monospace !important;
+  font-size: 0.9rem !important;
+  line-height: 1.4rem;
 }
 
 .hljs-deletion {
@@ -76,7 +31,7 @@ pre code {
 }
 
 .article-style {
-  font-family: 'Lora', serif;
+  font-family: 'Open Sans', sans-serif;
 }
 
 /* h1, h2, h3 {
@@ -84,9 +39,33 @@ pre code {
 } */
 
 .article-reading-time {
-  font-family: 'Lora', serif;
+  font-family: 'Open Sans', serif;
 }
 
 .article-date {
-  font-family: 'Lora', serif;
+  font-family: 'Open Sans', serif;
+}
+
+.rbl1 {
+  color: #ccc !important;
+}
+
+.rbl2 {
+  color: #0098e6 !important;
+}
+
+.rbl3 {
+  color: #e16d6d !important;
+}
+
+.rbl4 {
+  color: #3fa455 !important;
+}
+
+.rbl5 {
+  color: #c968e6 !important;
+}
+
+.rbl6 {
+  color: #999 !important;
 }

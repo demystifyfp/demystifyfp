@@ -226,9 +226,9 @@ type ProductWithReviews = {
 
 // int -> Job<ProductWithReviews>
 let getProductWithReviews id = job {
-  let! product = getProduct id <1>
-  let! reviews = getProductReviews id <2>
-  return {  <3>
+  let! product = getProduct id // <1>
+  let! reviews = getProductReviews id // <2>
+  return {  // <3>
     Id = id
     Name = product.Name
     Reviews = reviews |> List.map (fun r -> r.Author,r.Comment)

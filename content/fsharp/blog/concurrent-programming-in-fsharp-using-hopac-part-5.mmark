@@ -36,8 +36,8 @@ open Hopac
 
 // IVar<'a> -> 'a -> unit
 let fillAndRead iVar value =
-  IVar.fill iVar value // Job<unit> <1>
-  |> Job.bind (fun _ -> IVar.read iVar) // Job<unit> <2>
+  IVar.fill iVar value // Job<unit> // <1>
+  |> Job.bind (fun _ -> IVar.read iVar) // Job<unit> // <2>
   |> Job.map (printfn "%A") // Job<unit>
   |> run // unit
 ```
@@ -148,13 +148,13 @@ let readOrTimeout delayInMillis iVar =
 
   let timeOutAlt = // Alt<unit>
     timeOutMillis delayInMillis 
-    |> Alt.afterFun (fun _ -> printfn "time out!") <1>
+    |> Alt.afterFun (fun _ -> printfn "time out!") // <1>
   
   let readAlt = // Alt<unit>
     IVar.read iVar
-    |> Alt.afterFun (printfn "%A") <2>
+    |> Alt.afterFun (printfn "%A") // <2>
   
-  timeOutAlt <|> readAlt <3>
+  timeOutAlt <|> readAlt // <3>
   |> run
 ```
 
@@ -212,9 +212,9 @@ The `Ticker` type that we are going to implement will have the following signatu
 ```fsharp
 type Ticker =
   class
-    new : timeSpan:TimeSpan -> Ticker <1>
-    member Stop : unit -> unit <2>
-    member C : Ch<DateTimeOffset> <3>
+    new : timeSpan:TimeSpan -> Ticker // <1>
+    member Stop : unit -> unit // <2>
+    member C : Ch<DateTimeOffset> // <3>
   end
 ```
 
@@ -235,17 +235,17 @@ open System
 type Ticker (timeSpan : TimeSpan) =
   
   // Ch<DateTimeOffset>
-  let tickCh = Ch<DateTimeOffset>() <1>
+  let tickCh = Ch<DateTimeOffset>() // <1>
   
   // IVar<unit>
-  let cancelled = IVar() <2>
+  let cancelled = IVar() // <2>
 
   // unit -> Alt<unit>
-  let tick () = <3>
+  let tick () = // <3>
     Ch.give tickCh DateTimeOffset.Now
 
   // unit -> Alt<unit>
-  let rec loop () = <4>
+  let rec loop () = // <4>
     // Alt<unit>
     let tickerLoop = 
       timeOut timeSpan
@@ -253,15 +253,15 @@ type Ticker (timeSpan : TimeSpan) =
       |> Alt.afterJob loop
     tickerLoop <|> IVar.read cancelled
 
-  do start (loop()) <5>
+  do start (loop()) // <5>
 
   // unit -> unit 
   member __.Stop() = 
-    IVar.tryFill cancelled () |> start <6>
+    IVar.tryFill cancelled () |> start // <6>
 
   // Ch<DateTimeOffset>
   member __.C 
-    with get() = tickCh <7>
+    with get() = tickCh // <7>
 ```
 
 <1> A `Ticker` channel `tickCh` initialised as private value.
@@ -297,8 +297,8 @@ let useCase1 nTimes (xSeconds : int) f =
   let ticker = new Ticker(timeSpan)
 
   ticker.C // Ch<DateTimeOffset>
-  |> Alt.afterFun f // Alt<unit> <1>
-  |> Job.forN nTimes // Job<unit> <2>
+  |> Alt.afterFun f // Alt<unit> // <1>
+  |> Job.forN nTimes // Job<unit> // <2>
   |> run
   ticker.Stop()
 ```
@@ -347,23 +347,23 @@ let useCase2 t1Interval t2Interval xMillis =
   let ticker1 = ticker t1Interval
   let ticker2 = ticker t2Interval
 
-  let onTick tCh name loop = <1>
+  let onTick tCh name loop = // <1>
     tCh 
       |> Alt.afterFun (fun t -> printfn "[%s] at %A" name t)
       |> Alt.afterJob loop
   
   // unit -> Alt<'a>
-  let rec loop () = <2>
+  let rec loop () = // <2>
     onTick ticker1.C "T1" loop <|> onTick ticker2.C "T2" loop
 
   printfn "Starts at %A" (DateTimeOffset.Now)
-  start (loop()) <3>
+  start (loop()) // <3>
 
-  let onTimeOut _ = <4>
+  let onTimeOut _ = // <4>
     ticker1.Stop()
     ticker2.Stop()
 
-  timeOutMillis xMillis <5>
+  timeOutMillis xMillis // <5>
   |> Alt.afterFun onTimeOut
   |> run
   printfn "Ends at %A" (DateTimeOffset.Now)

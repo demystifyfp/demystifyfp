@@ -91,10 +91,10 @@ let getExpenditure expenseCategory transactions =
   getExpenses transactions
   |> List.filter (fun e -> e.Category = expenseCategory)
   |> List.sumBy (fun expense -> 
-    let (Money m) = expense.Amount <1>
-    m <2>
+    let (Money m) = expense.Amount // <1>
+    m // <2>
   )
-  |> Money <3>
+  |> Money // <3>
 ```
 
 <1> Unwrapping the underlying `decimal` value from the `Money` type. 
@@ -116,9 +116,9 @@ The second use case is computing the average expenditure on a given `ExpenseCate
 let averageExpenditure expenseCategory transactionsList =
   transactionsList
   |> List.map (getExpenditure expenseCategory)
-  |> List.map (fun (Money m) -> m) <1>
+  |> List.map (fun (Money m) -> m) // <1>
   |> List.average
-  |> Money <2>
+  |> Money // <2>
 ```
 
 Like the use case #1,
@@ -146,21 +146,21 @@ let balance transactions =
   transactions
   |> List.map ( function
                 | Credit x -> 
-                  let (Money m) = x.Amount <1>
+                  let (Money m) = x.Amount // <1>
                   m
                 | Debit y ->
-                  let (Money m) = y.Amount <2>
+                  let (Money m) = y.Amount // <2>
                   -m
               )
   |> List.sum
-  |> Money <3>
+  |> Money // <3>
 ```
 
 In the `balance` function, we have used an optimised version of the formula. 
 
 Instead of computing the sum of credits and debits separately, we are applying the unary minus to all debits and calculating the sum of these transformed values in a single go. 
 
-Like what we did for the use cases #1 and #2, Here also we are unwrapping the `decimal` type from the `Money` type at <1> and <2>, and at <3> we are wrapping the `decimal` type back to `Money` type after computing the sum. 
+Like what we did for the use cases #1 and #2, Here also we are unwrapping the `decimal` type from the `Money` type at  <1> and <2>, and at <3> we are wrapping the `decimal` type back to `Money` type after computing the sum. 
 
 ## Unwrapping and Wrapping Boilerplate
 
@@ -191,9 +191,9 @@ Let's add these two static members in the `Money` type
 type Money = Money of decimal with
   
   // Money * Money -> Money
-  static member (+) (Money m1, Money m2) = Money (m1 + m2) <1>
+  static member (+) (Money m1, Money m2) = Money (m1 + m2) // <1>
   
-  static member Zero = Money 0m <2>
+  static member Zero = Money 0m // <2>
 ```
 
 <1> Unwraps the `decimal` type for two operands of `Money` and returns the summed value with the target type `Money`
@@ -268,10 +268,10 @@ And then we can refactor the `balance` function
    transactions
 -  |> List.map ( function
 -                | Credit x -> 
--                  let (Money m) = x.Amount <1>
+-                  let (Money m) = x.Amount // <1>
 -                  m
 -                | Debit y ->
--                  let (Money m) = y.Amount <2>
+-                  let (Money m) = y.Amount // <2>
 -                  -m
 -              )
 -  |> List.sum

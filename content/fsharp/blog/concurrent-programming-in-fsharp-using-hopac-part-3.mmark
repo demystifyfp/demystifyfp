@@ -46,9 +46,9 @@ Let's create a fsharp script file `ApiGateway.fsx` and add the following NuGet p
 > touch ApiGateway.fsx
 > forge paket init
 > forge paket add Hopac
-> forge paket add Http.fs <1>
-> forge paket add System.Net.Http <2>
-> forge paket add FSharp.Data <3>
+> forge paket add Http.fs // <1>
+> forge paket add System.Net.Http // <2>
+> forge paket add FSharp.Data // <3>
 ```
 
 <1> [**Http.Fs**](https://github.com/haf/Http.fs) - A simple, functional HTTP client library for F# using Hopac
@@ -85,8 +85,8 @@ As we are going to use only HTTP GET requests, let's create a function `httpGet`
 let httpGet url =
   Request.createUrl Get url // Request 
   |> Request.setHeader (UserAgent "FsHopac") // Request
-  |> getResponse // Alt<Response> <1>
-  |> Job.bind Response.readBodyAsString // Job<string> <2>
+  |> getResponse // Alt<Response> // <1>
+  |> Job.bind Response.readBodyAsString // Job<string> // <2>
 ```
 
 <1> `getResponse` is a function from *Http.Fs* library that fires the HTTP request and returns the Response as `Alt`, a subclass of Hopac's `Job`. 
@@ -121,7 +121,7 @@ let userUrl = sprintf "%s/users/%s" basePath
 let getUser username : Job<User> =
   userUrl username 
   |> httpGet // Job<string>
-  |> Job.map UserTypeProvider.Parse // Job<User> <1>
+  |> Job.map UserTypeProvider.Parse // Job<User> // <1>
 ```
 
 <1> The `Job.map` function creates a job that runs the given job (`Job<string>`) and maps the result of the job (`string`) with the given function (`string -> User`). 
@@ -299,11 +299,11 @@ let getRepoDto username (repo : Repo) =
 // string -> Job<UserDto>
 let getUserDto username = job {
   let! user, repos = 
-    getUser username <*> getTopThreeUserRepos username <1> 
+    getUser username <*> getTopThreeUserRepos username // <1> 
   let! repoDtos = 
     repos 
-    |> Array.map (getRepoDto username) <2>
-    |> Job.conCollect <3>
+    |> Array.map (getRepoDto username) // <2>
+    |> Job.conCollect // <3>
   return {
     Name = user.Name 
     AvatarUrl = user.AvatarUrl
@@ -426,28 +426,28 @@ Now we have the HTTP support in place for pagination. The next step is navigatin
 let getAllUserRepos username =
   
   // string -> Repo list -> Job<Repo list>
-  let rec getAllUserRepos' url (repos : Repo list) = job {  <1>
+  let rec getAllUserRepos' url (repos : Repo list) = job {  // <1>
     let! gitHubResponse = httpGetWithPagination url // GitHubResponse
     let currentPageRepos = 
       gitHubResponse.Body // string
       |> ReposTypeProvider.Parse // Repo []
       |> Array.toList // Repo list
-    let reposSoFar = repos @ currentPageRepos <2>
+    let reposSoFar = repos @ currentPageRepos // <2>
     match gitHubResponse.NextPageUrl with
-    | Some nextPageUrl -> <3>
-       return! getAllUserRepos' nextPageUrl reposSoFar <4>
-    | None -> return reposSoFar <5>
+    | Some nextPageUrl -> // <3>
+       return! getAllUserRepos' nextPageUrl reposSoFar // <4>
+    | None -> return reposSoFar // <5>
   }
 
-  getAllUserRepos' (userReposUrl username) [] // Job<Repo list> <6>
+  getAllUserRepos' (userReposUrl username) [] // Job<Repo list> // <6>
   |> Job.map (List.toArray) // Job<Repo []> 
 ```
 
-<1> - The recursive function `getAllUserRepos'` implements the page navigation logic and the outer function `getAllUserRepos` calls this recursive one (at <6>) with the initial URL and an empty list of `Repo`.
+<1> - The recursive function `getAllUserRepos'` implements the page navigation logic and the outer function `getAllUserRepos` calls this recursive one (at // <6>) with the initial URL and an empty list of `Repo`.
 
 <2> - After getting the `Repo list` of the current page, the `getAllUserRepos'` function concatenates it with the repos from the initial list.
 
-<3> - If the current page has the next page URL, we are calling the `getAllUserRepos'` function recursively with the next page's URL and repo lists populated so far (at <4>).
+<3> - If the current page has the next page URL, we are calling the `getAllUserRepos'` function recursively with the next page's URL and repo lists populated so far (at // <4>).
 
 <5> - If we reached the last page, we just return the repo lists populated so far
 
@@ -603,14 +603,14 @@ Then write the `getUserApi` function that calls the `getUserDto` function and tr
 
 {callout="yes"}
 ```fsharp
-open Suave.Operators <1>
+open Suave.Operators // <1>
 
 // string -> HttpContext -> Async<HttpContext option>
 let getUserApi username ctx = async {
   let! userDtoResponse =
     getUserDto username // Job<UserDto>
-    |> Job.catch // Job<Choice<UserDto, exn>> <2>
-    |> Job.toAsync // Async<Choice<UserDto, exn>> <3>
+    |> Job.catch // Job<Choice<UserDto, exn>> // <2>
+    |> Job.toAsync // Async<Choice<UserDto, exn>> // <3>
   match userDtoResponse with
   | Choice1Of2 userDto ->
     let res =

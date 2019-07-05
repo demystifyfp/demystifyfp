@@ -161,12 +161,12 @@ The abstracted version of `create` would look like
 (defn id->created [name id]
   (created (str "/" name "/" id) {:id id}))
 
-(defn create-route [{:keys [name model req-schema enter]}] <1>
-  (let [enter-interceptor (or enter identity) <2>
+(defn create-route [{:keys [name model req-schema enter]}] ;<1>
+  (let [enter-interceptor (or enter identity) ;<2>
         path (str "/" name)]
     (POST path http-req
       :body [req-body req-schema]
-      (->> (enter-interceptor req-body) <3>
+      (->> (enter-interceptor req-body) ;<3>
            (db/insert! model)
            :id
            (id->created name)))))

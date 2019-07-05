@@ -16,7 +16,7 @@ The example that we are going to see is a time bomb simulator. The time bomb tra
 
 The associated fsharp type `TimeBomb` will have the following signature
 
-```
+```fsharp
 type TimeBomb =
   class
     new : unit -> TimeBomb
@@ -76,22 +76,22 @@ type TimeBomb () =
   // Status
   member __.Status 
     with get() =
-      let deadReasonAlt = <1>
+      let deadReasonAlt = // // <1>
         IVar.read reason
         |> Alt.afterFun Dead
 
-      let activatedAlt = <2>
+      let activatedAlt = // // <2>
         IVar.read activated
         |> Alt.afterFun (fun _ -> Alive)
       
-      let notActivatedAlt = <3>
+      let notActivatedAlt = // <3>
         Alt.always NotActivated 
 
       Alt.choose [
         deadReasonAlt 
         activatedAlt
         notActivatedAlt] 
-      |> run <4>
+      |> run // <4>
 ``` 
 
 <1> The `deadReasonAlt` will be available when the `reason` IVar is populated. 
@@ -161,22 +161,22 @@ type TimeBomb () =
 
   // int -> Char -> unit
   let activate seconds =
-    let ticker = startTicker seconds <1>
-    startTimeOut seconds <2>
-    IVar.tryFill activated () |> start <3>
+    let ticker = startTicker seconds // <1>
+    startTimeOut seconds // <2>
+    IVar.tryFill activated () |> start // <3>
     IVar.read reason
-    |> Alt.afterFun (fun _ -> ticker.Stop()) <4>
+    |> Alt.afterFun (fun _ -> ticker.Stop()) // <4>
     |> start
   // ...
 
   // int -> unit
   member this.Activate (seconds : int) =
     match this.Status with
-    | NotActivated -> activate seconds <5>
+    | NotActivated -> activate seconds // <5>
     | _ -> ()
 
   member __.DeadStatusAlt
-    with get() = IVar.read reason <6>
+    with get() = IVar.read reason // <6>
 ```
 
 <1> Starts the ticker
@@ -244,7 +244,7 @@ type TimeBomb () =
   // ...
 
   // Ch<char>
-  let inCh = Ch<char>() <1>
+  let inCh = Ch<char>() // <1>
 
   // char -> Alt<unit>
   let rec inputLoop defuseChar =
@@ -254,7 +254,7 @@ type TimeBomb () =
       else
         inputLoop defuseChar :> Job<unit>
     inCh
-    |> Alt.afterJob onInput <2>
+    |> Alt.afterJob onInput // <2>
 
   // ...
 ```
@@ -317,9 +317,9 @@ let simulateDefuse char =
   printSecondsRemaining t
   t.Status |> printfn "Status: %A"
   
-  TimeSpan.FromSeconds 3. <1>
+  TimeSpan.FromSeconds 3. // <1>
   |> timeOut 
-  |> Alt.afterFun (fun _ -> t.TryDefuse(char)) <2>
+  |> Alt.afterFun (fun _ -> t.TryDefuse(char)) // <2>
   |> Alt.afterJob (fun _ -> t.DeadStatusAlt)
   |> Alt.afterFun (printfn "Status: %A")
   |> run
