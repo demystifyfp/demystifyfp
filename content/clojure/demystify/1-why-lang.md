@@ -1,5 +1,5 @@
 ---
-title: "Why Clojure ?"
+title: "Why should I learn another programming language?"
 date: 2019-07-05T14:35:45+05:30
 draft: true
 tags: ["Clojure"]
@@ -14,7 +14,7 @@ As software developers, what we do in our day-to-day work?
 Almost all the stuff that we work on start with a problem statement and our objective is to provide a solution to it.
 
 Let's assume that the problem and the solution are two geo-coordinates in a map and our objective is to travel from problem to solution. We can choose any vehicle that makes sense in the context of the journey and travel towards the destination.
-![](/img/clojure/blog/demystify/why-clojure/why-fp-vehicle.png)
+![](/img/clojure/blog/demystify/why-lang/why-fp-vehicle.png)
 
 The vehicle we choose, **influence the experiences** of our journey.
 
@@ -22,7 +22,7 @@ If we are travelling by bicycle, we are not going to bother about the fuel price
 
 Back to our problem to solution journey example, the programming language that we choose is just a vehicle. Like vehicle influences the journey, The programming language we choose influences our thought process and approach to arrive at a solution.
 
-![](/img/clojure/blog/demystify/why-clojure/why-fp-langs.png)
+![](/img/clojure/blog/demystify/why-lang/why-fp-langs.png)
 
 Let me show you an example to experience this.
 

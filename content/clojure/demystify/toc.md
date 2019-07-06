@@ -17,4 +17,4 @@ Let's start our journey!
 
 ## The Series
 
-1. [Why Clojure ?]({{<relref "1-why-clojure.md">}}) 
+1. [Why should I learn another programming language?]({{<relref "1-why-lang.md">}}) 
