@@ -5,6 +5,9 @@ tags: ["clojure"]
 draft: true
 ---
 
+
+## Configuring Hikari-CP
+
 Let's get started by adding the [hikari-cp](https://github.com/tomekw/hikari-cp), a Clojure wrapper to [HikariCP](https://github.com/brettwooldridge/HikariCP), and the postgres driver dependencies in the `project.clj`. 
 
 ```clojure
@@ -38,7 +41,7 @@ Then define a mount state `datasource` to manage the life-cycle of the connectio
 
 (mount/defstate datasource
   :start (make-datasource)
-  :stop (hikari/close-datasource data-source))
+  :stop (hikari/close-datasource datasource))
 ```
 
 
@@ -49,5 +52,157 @@ Now if we start the application through mount, we will get the following output.
 ```sh
 wheel.infra.database=> (mount/start)
 {:started ["#'wheel.infra.config/root" 
-           "#'wheel.infra.database/data-source"]}
+           "#'wheel.infra.database/datasource"]}
 ```
+
+As the state `datasource` depends on the config's `root` state, Mount starts it first and then it starts the `datasource`. 
+
+
+## Database Migration Using Flyway
+
+To perform database migration in Clojure there are multiple options. Our preference is [Flyway](https://flywaydb.org). Let's get started by adding the dependency in the `project.clj`.
+
+```clojure
+(defproject wheel "0.1.0-SNAPSHOT"
+  ; ...
+  :dependencies [; ...
+                 [org.flywaydb/flyway-core "5.2.4"]]
+  ; ...
+  )
+```
+
+Then in the `database.clj` file, `import` the `Flyway` namespace and a new function `migrate`
+
+```clojure
+(ns wheel.infra.database
+  ; ...
+  (:import [org.flywaydb.core Flyway]))
+
+; ...
+
+(defn migrate []
+  (.. (Flyway/configure) ; <1>
+      (dataSource datasource)
+      (locations (into-array String ["classpath:db/migration"])) ; <2>
+      load
+      migrate))
+```
+
+<span class="callout">1</span> Creates an instance of Flyway and setup the configuration using the [dot special form](https://clojure.org/reference/java_interop#_the_dot_special_form)
+
+<span class="callout">2</span> Setting the migration files path to `database/migration`.
+
+This path doesn't exist yet. So, let's create it.
+
+```sh
+> mkdir -p resources/database/migration 
+```
+
+To verify the database migration, let's load the updated `database.clj` in the REPL and invoke the `migrate` function
+
+```sh
+wheel.infra.database=> (mount/start)
+{:started ["#'wheel.infra.config/root" 
+           "#'wheel.infra.database/datasource"]}
+wheel.infra.database=> (migrate)
+0
+wheel.infra.database=> (mount/stop)
+{:stopped ["#'wheel.infra.database/datasource"]}
+```
+
+If we check the database now, it will have the `flyway_schema_history` table
+
+```bash
+> psql -d wheel
+
+wheel=# \d
+
+                 List of relations
+ Schema |         Name          | Type  |  Owner
+--------+-----------------------+-------+----------
+ public | flyway_schema_history | table | postgres
+(1 row)
+```
+
+## Separating Database Migration From Application Bootstrap
+
+Performing database migration during application bootstrap has [certain limitations](https://pythonspeed.com/articles/schema-migrations-server-startup/) and it is recommended to decouple it. In our application, we did it by having separate entry-points, one to start the application and another to migrate the database.
+
+Let's create a new file `core.clj` in the `infra` directory.
+
+```sh
+> touch src/wheel/infra/core.clj
+```
+
+Then define two functions, `start-app` and `migrate-database`, to start the application and perform database migration respectively. 
+
+```clojure
+(ns wheel.infra.core
+  (:require [wheel.infra.config :as config]
+            [wheel.infra.database :as db]
+            [mount.core :as mount]))
+
+(defn start-app []
+  (mount/start))
+
+(defn migrate-database []
+  (mount/start #'config/root #'db/datasource) ; <1>
+  (db/migrate) ; <2>
+  (mount/stop #'db/datasource)) ; <3>
+```
+
+<span class="callout">1</span> Invokes Mount's `start` function with that states that we wanted to start. Note that Mount doesn't start the transitive dependent states in this mode. 
+
+<span class="callout">2</span> Performs the database migration 
+
+<span class="callout">3</span> Stops the datasource after performing the migration.
+
+Let's add the `stop-app` function as well, which will stop the application except the `migration` state. 
+
+```clojure
+(ns wheel.infra.core
+  ;...
+  )
+; ...
+(defn stop-app []
+  (mount/stop))
+```
+
+## Reloaded Workflow
+
+[Reloaded Workflow](http://thinkrelevance.com/blog/2013/06/04/clojure-workflow-reloaded) is one of the common practice in Clojure development to do interactive REPL driven development. 
+
+Adding this to our current codebase is straight-forward.
+
+As a first step, add a leiningen user profile called `dev` in the 's `project.clj` file.
+
+```clojure
+(defproject wheel "0.1.0-SNAPSHOT"
+  ; ...
+  :profiles { ;...
+             :dev {:source-paths ["dev"] ; <1>
+                   :dependencies [[org.clojure/tools.namespace "0.3.1"]]}}) ; <2>
+```
+
+<span class="callout">1</span> Adds a new source-path to load the clojure files from the `dev` directory.
+<span class="callout">2</span> Adds a dev dependency [tools.namespace](https://github.com/clojure/tools.namespace) to interactively reload the modified source files. 
+
+Then, create a new file `user.clj` in the `dev` directory.
+
+```clojure
+; dev/user.clj
+(ns user
+  (:require [wheel.infra.core :refer [start-app stop-app migrate-database] ; <1>
+                              :as infra]
+            [clojure.tools.namespace.repl :as repl]))
+
+(defn reset [] ; <2>
+  (stop-app)
+  (repl/refresh :after 'infra/start-app))
+```
+<span class="callout">1</span> Makes `start-app`, `stop-app` and `migrate-database` function to be available in the `user` namespace.
+<span class="callout">2</span> Adds a `reset` function, which stops the application and reload all the modified codes. Using the `:after` parameter, we are informing the `refresh` function to start the application after the reload.
+
+To see it in action, stop the current REPL session and start it again. This time profile selection Calva promt will include the `dev` profile in the list of options. When we select the `dev` profile, it will start the leiningen REPL along with the configuration specified the `dev` profile. 
+
+Then from the REPL, we can include the `user` profile and manage the application's life cycle
