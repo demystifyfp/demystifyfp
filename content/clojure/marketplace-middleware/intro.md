@@ -38,3 +38,4 @@ I will also be updating the below list with the new blog post links.
 
 1. [Bootstrapping the Clojure Project with Mount]({{<relref "bootstrapping-clojure-project-using-mount-and-aero.md">}})
 2. [Configuring Database Connection Pooling, Migration and Reloaded Workflow]({{<relref "configuring-database-connection-pooling-migration-reloaded-workflow.md">}})
+3. [Configuring Logging Using Timbre]({{<relref "configuring-logging-using-timbre.md">}})

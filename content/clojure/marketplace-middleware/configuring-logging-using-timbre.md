@@ -2,12 +2,12 @@
 title: "Configuring Logging Using Timbre"
 date: 2019-09-29T10:08:01+05:30
 draft: true
-tags: ["clojure"]
+tags: ["clojure", "Timbre"]
 ---
 
-In the first two blog posts of the blog series [Building an E-Commerce Marketplace Middleware in Clojure]({{<relref "intro.md">}}), we learnt how to bootstrap a Clojure project using [Mount](https://github.com/tolitius/mount) & [Aero](https://github.com/juxt/aero) and how to configure database connection pooling & database migration along with reloaded workflow.
+In the first two blog posts of the blog series [Building an E-Commerce Marketplace Middleware in Clojure]({{<relref "intro.md">}}), we learnt how to bootstrap a Clojure project using [Mount](https://github.com/tolitius/mount) & [Aero](https://github.com/juxt/aero) and how to configure database connection pooling & database migration along with reloaded workflow. We are going to continue on setting up the infrastructure and in this blog post, we are going to take up logging using [Timbre](https://github.com/ptaoussanis/timbre). 
 
-We are going to continue on setting up the infrastructure and in this blog post, we are going to take up logging using [Timbre](https://github.com/ptaoussanis/timbre). Timbre is a Clojure/Script logging library that enable to configure logging using a simple Clojure map. If you ever had a hard time dealing with complex (XML based) configuration setup for logging, you will defenitely feel a breath of fresh air while using Timbre. Let's dive in!
+Timbre is a Clojure/Script logging library that enable to configure logging using a simple Clojure map. If you ever had a hard time dealing with complex (XML based) configuration setup for logging, you will defenitely feel a breath of fresh air while using Timbre. Let's dive in!
 
 > This blog post is a part 3 of the blog series [Building an E-Commerce Marketplace Middleware in Clojure]({{<relref "intro.md">}}).
 
@@ -36,7 +36,7 @@ Then create a new file `log.clj` and refer the `timbre` library.
   (:require [taoensso.timbre :as timbre]))
 ```
 
-To play with the functionality provided by Timbre, send the above snippet to the REPL and then use any of the `info`, `warn`, `debug` or `error` function to perform the logging. By default, Timbre uses `println` to write the logs in the console (stdout to be precise).
+To play with the functionality provided by Timbre, send the above snippet to the REPL and then use any of the `info`, `warn`, `debug` or `error` macro to perform the logging. By default, Timbre uses `println` to write the logs in the console.
 
 ```sh
 wheel.infra.log=> (timbre/info "Hello Timbre!")
@@ -44,7 +44,7 @@ wheel.infra.log=> (timbre/info "Hello Timbre!")
 nil
 ```
 
-These functions also accepts Clojure maps.
+These macros also accepts Clojure maps.
 
 ```sh
 wheel.infra.log=> (timbre/info {:Hello "Timbre!"})
@@ -66,8 +66,7 @@ Let's add the [Chesire](https://github.com/dakrone/cheshire) library to take car
   ; ...
   )
 ```
-
-Then we are going the `output-fn` hook provided by Timbre. This hook is a function with the signature `(fn [data]) -> string`. The data is a map contains the actual message, log level, timestamp, hostname and much more. 
+Timbre provides a hook `output-fn`, a function with the signature `(fn [data]) -> string`, to customize the output format. The data is a map contains the actual message, log level, timestamp, hostname and much more.
 
 ```clojure
 ; src/wheel/infra/log.clj
@@ -81,7 +80,7 @@ Then we are going the `output-fn` hook provided by Timbre. This hook is a functi
 
 <span class="callout">1</span> Destructures the interested keys from the `data` map. 
 
-<span class="callout">2</span> Timbre use [delay](https://clojuredocs.org/clojure.core/delay) to holde the logging message. So, it retrieves the value using the [force](https://clojuredocs.org/clojure.core/force) function and then uses [read-string](https://clojuredocs.org/clojure.core/read-string) to convert the `string` to its corresponding Clojure data structure.
+<span class="callout">2</span> Timbre use [delay](https://clojuredocs.org/clojure.core/delay) to cache the logging message. So, here we are retrieving the value using the [force](https://clojuredocs.org/clojure.core/force) function and then uses [read-string](https://clojuredocs.org/clojure.core/read-string) to convert the `string` to its corresponding Clojure data structure.
 
 <span class="callout">3</span> Generates the stringified JSON representation of the log entry containing the log level, timestamp and the actual message. 
 
@@ -301,3 +300,101 @@ wheel.middleware.event=> (s/valid?
                             :id (java.util.UUID/randomUUID)})
 true
 ```
+
+### Asserting & Logging Event
+
+We are going to add a function `write!` in the *log.clj* file that takes an `event` and write it to the log using Timbre. The application boundaries will use this function to perform the logging. 
+
+```clojure
+; src/wheel/infra/log.clj
+(ns wheel.infra.log
+  (:require ; ...
+            [clojure.spec.alpha :as s]
+            [wheel.middleware.event :as event]))
+; ...
+
+(defn write! [{:keys [level] :as event}] ; <1>
+  {:pre [(s/assert ::event/event event)]} ; <2>
+  (case level ; <3>
+    :info (timbre/info event)
+    :debug (timbre/debug event)
+    :warn (timbre/warn event)
+    :error (timbre/error event)
+    :fatal (timbre/fatal event)))
+```
+
+<span class="callout">1</span> Destructures the `level` from the `event` and also keeps the `event`
+
+<span class="callout">2</span> Uses the Clojure's function [pre-condition](https://clojure.org/reference/special_forms#_fn_name_param_condition_map_expr_2) to assert the incoming parameter against the `event` spec.
+
+<span class="callout">3</span> Invokes the appropriate `log` macros of the Timbre library based on the event's `level`.
+
+When load this to the REPL and evaluate the `write!` function with a random map, we'll get the following output.
+
+```sh
+wheel.infra.log=> (write! {:level :info :name :foo})
+{"timestamp":"2019-10-01T15:46:22Z","level":"info","event":{"level":"info","name":"foo"}}
+nil
+```
+
+If you are wondering the pre-condition didn't get executed, it's because Clojure spec's asserts as disabled by default, we need to enable them.
+
+```sh
+wheel.infra.log=> (s/check-asserts true)
+true
+wheel.infra.log=> (write! {:level :info :name :foo})
+Execution error - invalid arguments to wheel.infra.log/write! at (log.clj:17).
+{:level :info, :name :foo} - failed: (contains? % :type) at: [nil]
+class clojure.lang.ExceptionInfo
+# ... Stack traces ignored for brevity
+```
+
+After enabling the asserts checking it is now working as expected. 
+
+In our application, we are going to turn on the `check-asserts` by setting it up during application startup. 
+
+```clojure
+; src/wheel/infra/core.clj
+
+(ns wheel.infra.core
+  (:require ; ...
+            [clojure.spec.alpha :as s]))
+
+(defn start-app
+  ([] 
+   (start-app true))
+  ([check-asserts]
+   (log/init)
+   (s/check-asserts check-asserts)
+   (mount/start)))
+
+; ...
+```
+
+The rewritten version of `start-app` is a multi-arity function that optionally accepts a parameter to set the `check-asserts` flag. Typically in production environment, we can turn off this flag.
+
+To log multiple events, let's add the `write-all!` function, which invokes the `write!` function for each provided events.
+
+```clojure
+; src/wheel/infra/log.clj
+; ...
+(defn write-all! [events]
+  (run! write! events))
+```
+
+As a final step, rewrite the `json-output` function to log the event itself as it already contain the timestamp and level.
+
+```clojure
+; src/wheel/infra/log.clj
+; ...
+
+(defn- json-output [{:keys [msg_]}]
+  (let [event (read-string (force msg_))]
+    (json/generate-string event)))
+```
+
+## Summary
+
+In this blog post, we learned how to configure Timbre with JSON output and also created abstractions `write!` & `write-all!` to do the logging. In the upcoming blog posts, we are going to add appenders to persist the events in the PostgreSQL database and to notify the users in Slack in case of an error. Stay tuned!
+
+The source code associated with this part is available on [this GitHub](https://github.com/demystifyfp/BlogSamples/tree/0.15/clojure/wheel) repository.
