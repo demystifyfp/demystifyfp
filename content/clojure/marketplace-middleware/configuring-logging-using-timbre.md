@@ -1,7 +1,6 @@
 ---
 title: "Configuring Logging Using Timbre"
-date: 2019-09-29T10:08:01+05:30
-draft: true
+date: 2019-10-02T05:50:01+05:30
 tags: ["clojure", "Timbre"]
 ---
 
