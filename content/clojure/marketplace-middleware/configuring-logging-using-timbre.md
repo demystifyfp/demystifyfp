@@ -37,7 +37,7 @@ Then create a new file `log.clj` and refer the `timbre` library.
 
 To play with the functionality provided by Timbre, send the above snippet to the REPL and then use any of the `info`, `warn`, `debug` or `error` macro to perform the logging. By default, Timbre uses `println` to write the logs in the console.
 
-```sh
+```clojure
 wheel.infra.log=> (timbre/info "Hello Timbre!")
 19-09-29 04:59:03 UnknownHost INFO [wheel.infra.log:1] - Hello Timbre!
 nil
@@ -45,7 +45,7 @@ nil
 
 These macros also accept Clojure maps.
 
-```sh
+```clojure
 wheel.infra.log=> (timbre/info {:Hello "Timbre!"})
 19-09-29 05:02:44 UnknownHost INFO [wheel.infra.log:1] - {:Hello "Timbre!"}
 nil
@@ -96,12 +96,12 @@ As the name indicates, the `init` function acts as the entry point for initializ
 
 Now if we log after calling this `init` function, we will get the output as below.
 
-```sh
+```clojure
 wheel.infra.log=> (init)
 {:level :debug, :ns-whitelist [], :ns-blacklist [] ...}
 ```
 
-```sh
+```clojure
 wheel.infra.log=> (timbre/info {:name :an-event/succeeded})
 {"timestamp":"2019-09-29T05:30:42Z", "level":"info","event":{"name":"an-event/succeeded"}}
 nil
@@ -193,7 +193,7 @@ Let's add the `ist-timestamp` spec in a new file `offset-date-time.clj`. We will
 
 We can verify it in the REPL as below.
 
-```sh
+```clojure
 wheel.offset-date-time=> (s/valid? ::ist-timestamp "2007-04-05T12:30-02:00")
 false
 wheel.offset-date-time=> (s/valid? ::ist-timestamp "2019-10-01T06:56+05:30")
@@ -282,12 +282,12 @@ Now we have all the individual attributes of an event, and we can define the spe
 
 Let's verify the spec in the REPL
 
-```sh
+```clojure
 wheel.middleware.event=> (s/valid?
                           ::event
                           {:name :ranging/succeeded
                           :type :domain
-                          :channel-id 1
+                          :channel-id "UA"
                           :level :info
                           :timestamp "2019-10-01T12:30+05:30"
                           :id (java.util.UUID/randomUUID)
@@ -295,7 +295,7 @@ wheel.middleware.event=> (s/valid?
 true
 ```
 
-```sh
+```clojure
 wheel.middleware.event=> (s/valid?
                           ::event
                           {:name :db.migration/failed
@@ -338,7 +338,7 @@ We are going to add a function `write!` in the *log.clj* file that takes an `eve
 
 When we evaluate this `write!` function with a random map, we'll get the following output.
 
-```sh
+```clojure
 wheel.infra.log=> (write! {:level :info :name :foo})
 {"timestamp":"2019-10-01T15:46:22Z","level":"info","event":{"level":"info","name":"foo"}}
 nil
@@ -346,7 +346,7 @@ nil
 
 If you are wondering the pre-condition didn't get executed, it's because Clojure spec's asserts as disabled by default, we need to enable them.
 
-```sh
+```clojure
 wheel.infra.log=> (s/check-asserts true)
 true
 wheel.infra.log=> (write! {:level :info :name :foo})

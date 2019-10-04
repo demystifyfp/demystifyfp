@@ -51,7 +51,7 @@ Then define a mount state `datasource` to manage the life-cycle of the connectio
 
 Now if we start the application through Mount, we will get the following output.
 
-```sh
+```clojure
 wheel.infra.database=> (mount/start)
 {:started ["#'wheel.infra.config/root" 
            "#'wheel.infra.database/datasource"]}
@@ -98,13 +98,13 @@ Then in the `database.clj` file, `import` the `Flyway` namespace and add a new f
 
 This path doesn't exist yet. So, let's create it.
 
-```sh
+```bash
 > mkdir -p resources/db/migration
 ```
 
 To verify the database migration, let's load the updated `database.clj` in the REPL and invoke the `migrate` function.
 
-```sh
+```clojure
 wheel.infra.database=> (mount/start)
 {:started ["#'wheel.infra.config/root"
            "#'wheel.infra.database/datasource"]}
@@ -134,7 +134,7 @@ Performing database migration during application bootstrap has [certain limitati
 
 Let's create a new file `core.clj` in the `infra` directory.
 
-```sh
+```bash
 > touch src/wheel/infra/core.clj
 ```
 
@@ -218,7 +218,7 @@ When we select the `dev` profile, it will start the Leiningen REPL along with th
 
 Then from the REPL, we can include the `user` profile and manage the application's life cycle.
 
-```sh
+```clojure
 wheel.core=> (in-ns 'user)
 #namespace[user]
 
