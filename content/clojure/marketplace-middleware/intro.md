@@ -40,3 +40,4 @@ I will also be updating the below list with the new blog post links.
 2. [Configuring Database Connection Pooling, Migration and Reloaded Workflow]({{<relref "configuring-database-connection-pooling-migration-reloaded-workflow.md">}})
 3. [Configuring Logging Using Timbre]({{<relref "configuring-logging-using-timbre.md">}})
 4. [Storing Log Events in Postgres Using Toucan]({{<relref "storing-log-events-in-postgres-using-toucan.md">}})
+5. [Using Slack as Log Appender]({{<relref "using-slack-as-log-appender.md">}})
