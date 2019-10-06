@@ -5,15 +5,15 @@ draft: true
 tags: ["clojure"]
 ---
 
-The backoffice team of our client has an active slack based workflow for most of their systems. As this middleware is going to be yet an another system that they need to keep track of, they asked us to send messages on Slack if the middleware encounters an error during its operation. In this blog post, I am going to share how to do it in Clojure using Timbre.
+The back-office team of our client has an active slack based workflow for most of their systems. As this middleware is going to be another system that they need to keep track of, they asked us to send messages on Slack if the middleware encounters an error during its operation. In this blog post, I am going to share how we did it in Clojure using Timbre.
 
 > This blog post is a part 5 of the blog series [Building an E-Commerce Marketplace Middleware in Clojure]({{<relref "intro.md">}}).
 
 ### Slack Incoming Webhooks
 
-Slack has the mechanism of [Incoming Webhooks](https://api.slack.com/incoming-webhooks) that provides a simple way to post messages from any application into Slack. By following [these steps](https://api.slack.com/incoming-webhooks#getting-started), we will get an unique *webhook* URL to which we can send a JSON payload with the message text and some other options.
+Slack has the mechanism of [Incoming Webhooks](https://api.slack.com/incoming-webhooks) that provides a simple way to post messages from any application into Slack. By following [these steps](https://api.slack.com/incoming-webhooks#getting-started), we will get a unique *webhook* URL to which we can send a JSON payload with the message text and some other options.
 
-### Sending Slack Message
+### Sending A Slack Message
 
 To work with the HTTP post requests, let's add [clj-http](https://github.com/dakrone/clj-http) dependency in our *project.clj* and restart the REPL.
 
@@ -26,7 +26,7 @@ To work with the HTTP post requests, let's add [clj-http](https://github.com/dak
   )
 ```
 
-Then create a new directory *slack* and a clojure file *webhook.clj* under it.
+Then create a new directory *slack* and a Clojure file *webhook.clj* under it.
 
 ```bash
 > mkdir src/wheel/slack
@@ -35,7 +35,7 @@ Then create a new directory *slack* and a clojure file *webhook.clj* under it.
 
 Finally, create a function `post-message!` to post a message in a Slack channel using the webhook URL.
 
-```clj
+```clojure
 ; src/wheel/slack/webhook.clj
 (ns wheel.slack.webhook
   (:require [clj-http.client :as http]
@@ -48,7 +48,7 @@ Finally, create a function `post-message!` to post a message in a Slack channel 
                             :body body})))
 ```
 
-Let's try to execute this function in REPL
+Let's try to execute this function in the REPL
 
 ```clojure
 wheel.slack.webhook=> (post-message! "{{webhook-url}}"
@@ -67,7 +67,7 @@ wheel.slack.webhook=> (post-message! "{{webhook-url}}"
  }
 ```
 
-We should see something similar to this in the configured slack channel
+We should see something similar to this in the configured slack channel.
 
 ![](/img/clojure/blog/ecom-middleware/sample-slack-event.png)
 
@@ -90,7 +90,7 @@ Then add the wrapper function in the *infra/config.clj*
   (get-in root [:app :log :slack :webhook-url]))
 ```
 
-To verify this new config, stop the REPL, set the environment variable `WHEEL_APP_LOG_SLACK_WEBHOOK_URL` with the webhook URL and start the REPL. Then start the app, call the `slack-log-webhook-url`.
+To verify this new config, stop the REPL, set the environment variable `WHEEL_APP_LOG_SLACK_WEBHOOK_URL` with the webhook URL and start the REPL. Then start the app, call the `slack-log-webhook-url` function.
 
 ```clojure
 wheel.core=> (in-ns 'user)
@@ -101,7 +101,7 @@ user=> (wheel.infra.config/slack-log-webhook-url)
 "https://hooks.slack.com/services/...."
 ```
 
-All right! Now we have the infrastructure in place to send messages to Slack and it's time to wire it up with Timbre.
+All right! Now we have the infrastructure in place to send messages to Slack, and it's time to wire it up with Timbre.
 
 ### Adding Slack Appender
 
@@ -139,7 +139,7 @@ wheel.infra.log-appender.slack==> (event->text {:name :ranging/failed})
 "ranging failed"
 ```
 
-The actual appender function uses these functions and post the message using the `post-message!` function that we defined earlier.
+The actual appender function uses these functions and posts the message using the `post-message!` function that we defined earlier.
 
 ```clojure
 ; src/infra/log_appender/slack.clj
@@ -149,8 +149,9 @@ The actual appender function uses these functions and post the message using the
   (let [event (read-string (force msg_))]
     (when (= :domain (:type event))
       (let [text (event->text event)
-            attachment (event->attachment event)]
-        (slack/post-message! (config/slack-log-webhook-url) text [attachment])))))
+            attachment (event->attachment event)
+            webhook-url (config/slack-log-webhook-url)]
+        (slack/post-message! webhook-url text [attachment])))))
 
 (def appender {:enabled? true
                :output-fn :inherit
@@ -159,7 +160,7 @@ The actual appender function uses these functions and post the message using the
                :fn send-to-slack})
 ```
 
-The appender is similar to what we had for the `database` expect that it is going to process only the logs with the level `:error` or above.
+Unlike the `database` appender, the `slack` one going to process only the logs with the level `:error` or above.
 
 The final step is adding this appender to the Timbre's config.
 
@@ -178,11 +179,11 @@ The final step is adding this appender to the Timbre's config.
 ; ...
 ```
 
-If we reset the application in the REPL and write an error log using the `write!` function, we should be able to see the log entry (event) both in the slack and in the database.
+If we reset the application in the REPL, and write an error log using the `write!` function, we should be able to see the log entry (event) both in the slack and in the database.
 
 
 ## Summary
 
-In this blog post we started from where we left off in the previous post and added the new `slack` appender. One of the key thing that I'd like to highlight is that the abstractions that we have created so far are loosely coupled from each other.
+In this blog post, we started from where we left off in the previous post and added the new `slack` appender. Working with Timber for logging is such a pleasant experience. We are one more step closer in setting up the infrastructure aspects of the application. Stay tuned!
 
- We are one more step closer in setting up the infrastructure aspects of the application. 
+The source code associated with this part is available on [this GitHub](https://github.com/demystifyfp/BlogSamples/tree/0.16/clojure/wheel) repository.
