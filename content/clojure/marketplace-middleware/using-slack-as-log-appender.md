@@ -1,8 +1,7 @@
 ---
 title: "Using Slack as Log Appender"
-date: 2019-10-05T11:05:41+05:30
-draft: true
-tags: ["clojure"]
+date: 2019-10-06T20:25:41+05:30
+tags: ["clojure", "Timbre"]
 ---
 
 The back-office team of our client has an active slack based workflow for most of their systems. As this middleware is going to be another system that they need to keep track of, they asked us to send messages on Slack if the middleware encounters an error during its operation. In this blog post, I am going to share how we did it in Clojure using Timbre.
@@ -186,4 +185,4 @@ If we reset the application in the REPL, and write an error log using the `write
 
 In this blog post, we started from where we left off in the previous post and added the new `slack` appender. Working with Timber for logging is such a pleasant experience. We are one more step closer in setting up the infrastructure aspects of the application. Stay tuned!
 
-The source code associated with this part is available on [this GitHub](https://github.com/demystifyfp/BlogSamples/tree/0.16/clojure/wheel) repository.
+The source code associated with this part is available on [this GitHub](https://github.com/demystifyfp/BlogSamples/tree/0.17/clojure/wheel) repository.
