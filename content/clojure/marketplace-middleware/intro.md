@@ -41,3 +41,4 @@ I will also be updating the below list with the new blog post links.
 3. [Configuring Logging Using Timbre]({{<relref "configuring-logging-using-timbre.md">}})
 4. [Storing Log Events in Postgres Using Toucan]({{<relref "storing-log-events-in-postgres-using-toucan.md">}})
 5. [Using Slack as Log Appender]({{<relref "using-slack-as-log-appender.md">}})
+6. [Processing Messages From IBM-MQ in Clojure]({{<relref "processing-messages-from-ibmmq-in-clojure.md">}})
