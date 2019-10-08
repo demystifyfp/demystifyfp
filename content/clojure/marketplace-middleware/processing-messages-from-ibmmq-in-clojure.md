@@ -129,3 +129,33 @@ wheel.infra.core=> (stop-app)
 {:stopped ["#'wheel.infra.ibmmq/jms-conn" 
            "#'wheel.infra.database/datasource"]}
 ```
+
+### Client's Business Operation Model
+
+For each items that our client sells in a marketplace, they will be adding it manually using the marketplace's seller portal. After that client performs the following four operations using the OMS. 
+
+1. **Ranging** - Listing items to make them available for sales. 
+2. **Deranging** - Unlisting items to prevent them from being shown in the marketplace. 
+3. **Inventorying** - Upates the inventories of items.
+4. **Pricing** - Upates the prices of items.
+
+The OMS is configured to communciates these operations to the middleware via four different queues.
+
+### Consuming Messages from IBM-MQ Queue
+
+Let's a new configuration item `settings` in the *config.edn* file to specify the queue names the middleware has to listen. 
+
+```clojure
+; resources/config.edn
+{:app {...}
+ :settings {:oms {:ranging-queue-name "DEV.QUEUE.1"}}}
+```
+
+Then add a wrapper function in `config.clj` to read the settings.
+
+```clojure
+; src/wheel/infra/config.clj
+; ...
+(defn oms-settings []
+  (get-in root [:settings :oms]))
+```
