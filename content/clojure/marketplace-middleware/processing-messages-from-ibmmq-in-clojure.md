@@ -1,11 +1,10 @@
 ---
 title: "Processing Messages From IBM-MQ in Clojure"
-date: 2019-10-08T12:07:27+05:30
-draft: true
+date: 2019-10-10T18:20:27+05:30
 tags: ["clojure"]
 ---
 
-The Order Management System(OMS) of our client exposes its operations in the form of messages via [IBM-MQ](https://www.ibm.com/products/mq). In this blog post, we are going to focus on setting up the infrastructure to receive and process these message in our application. 
+The Order Management System(OMS) of our client exposes its operations in the form of messages via [IBM-MQ](https://www.ibm.com/products/mq). In this blog post, we are going to focus on setting up the infrastructure to receive and process these messages in our application. 
 
 > This blog post is a part 6 of the blog series [Building an E-Commerce Marketplace Middleware in Clojure]({{<relref "intro.md">}}).
 
@@ -162,7 +161,7 @@ Then add a wrapper function in `config.clj` to read these settings.
   (get-in root [:settings :oms]))
 ```
 
-Now we the configuration in place to read the queue name. To read messages from this queue, we need to do two things.
+Now we have the configuration in place to read the queue name. To read messages from this queue, we need to do two things.
 
 * Creating a new JMS [Session](https://docs.oracle.com/javaee/7/api/javax/jms/Session.html)
 * Adding a [MessageListener](https://docs.oracle.com/javaee/7/api/javax/jms/MessageListener.html)
@@ -229,7 +228,7 @@ Finally, use these function to define the `mount` state for ranging queue consum
   :stop (stop ranging-consumer))
 ```
 
-Now we all set to receive messages from IBM-MQ and let's do a test drive.
+All set to receive messages from IBM-MQ and let's do a test drive.
 
 
 ```clojure
