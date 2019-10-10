@@ -5,7 +5,7 @@ draft: true
 tags: ["clojure"]
 ---
 
-The Order Management System(OMS) of our client exposes its operations in the form of messages via [IBM-MQ](https://www.ibm.com/products/mq). In this blog post, we are going to focus on the setup the infrastructure to receive and process these message in our application. 
+The Order Management System(OMS) of our client exposes its operations in the form of messages via [IBM-MQ](https://www.ibm.com/products/mq). In this blog post, we are going to focus on setting up the infrastructure to receive and process these message in our application. 
 
 > This blog post is a part 6 of the blog series [Building an E-Commerce Marketplace Middleware in Clojure]({{<relref "intro.md">}}).
 
@@ -13,7 +13,7 @@ The Order Management System(OMS) of our client exposes its operations in the for
 
 We are going to leverage the IBM-MQ's developers edition [docker image](https://hub.docker.com/r/ibmcom/mq/) for the local development. 
 
-The steps for running it are as follows. These steps assuming that you have docker installed in your machine.
+The steps for running it are as follows. These steps assumes that you have docker installed in your machine.
 
 ```bash
 # Pulling the latest Docker image
@@ -29,16 +29,16 @@ The steps for running it are as follows. These steps assuming that you have dock
              ibmcom/mq:latest
 ```
 
-> We are explicitly setting the name `ibmmq` for this container, so that we don't need to repeat this configuration everytime when we start the container like `docker start ibmmq`. 
+> We are explicitly setting the name `ibmmq` for this container so that we don't need to repeat this configuration every time when we start the container like `docker start ibmmq`. 
 
-This `ibmmq` container expose two ports `9443`, a web console for the adminstartion and `1414`, to consume messages from IBM-MQ. 
+This `ibmmq` container exposes two ports `9443`, a web console for the administration and `1414`, to consume messages from IBM-MQ. 
 
 
-### Intializing IBM-MQ Connection
+### Initializing IBM-MQ Connection
 
-IBM-MQ follows the [JMS](https://en.wikipedia.org/wiki/Java_Message_Service) standarad. So, working with this is staright-forward as depicted in this [tutorial](https://developer.ibm.com/messaging/learn-mq/mq-tutorials/develop-mq-jms/). 
+IBM-MQ follows the [JMS](https://en.wikipedia.org/wiki/Java_Message_Service) standard. So, working with this is straight-forward as depicted in this [tutorial](https://developer.ibm.com/messaging/learn-mq/mq-tutorials/develop-mq-jms/). 
 
-Let's add the configuration paramters in the `config.edn` and read them using aero as we did for the other configurations.
+Let's add the configuration parameters in the `config.edn` and read them using aero as we did for the other configurations.
 
 ```clojure
 ; resources/config.edn
@@ -117,7 +117,7 @@ To make this new state `jms-conn` to start during the application bootstrap, let
 ; ...
 ```
 
-Now when we `start` or the `stop` the application, we can see that this JMS connection is also getting started and stopped.
+Now when we `start` and `stop` the application, we can see that this JMS connection is also getting started and stopped.
 
 ```clojure
 wheel.infra.core=> (start-app)
@@ -132,20 +132,20 @@ wheel.infra.core=> (stop-app)
 
 ### Client's Business Operation Model
 
-For each items that our client sells in a marketplace, they will be adding it manually using the marketplace's seller portal. After that client performs the following four operations using the OMS. 
+For each item that our client sells in a marketplace, they will be adding it manually using the marketplace's seller portal. After that client performs the following four operations using the OMS. 
 
 1. **Ranging** - Listing items to make them available for sales. 
 2. **Deranging** - Unlisting items to prevent them from being shown in the marketplace. 
-3. **Inventorying** - Upates the inventories of items.
-4. **Pricing** - Upates the prices of items.
+3. **Inventorying** - Updates the inventories of items.
+4. **Pricing** - Updates the prices of items.
 
-The OMS is configured to communciates these operations to the middleware via four different queues named after this operation.
+The OMS is configured to communicate these operations to the middleware via four different queues named after this operation.
 
 ### Consuming Messages from IBM-MQ Queue
 
 Let's add a new configuration item, `settings` in the *config.edn* file to specify the queue names that the middleware has to listen. 
 
-To start with let's add the ranging queue name alone.
+To start with, let's add the ranging queue name alone.
 
 ```clojure
 ; resources/config.edn
@@ -153,7 +153,7 @@ To start with let's add the ranging queue name alone.
  :settings {:oms {:ranging-queue-name "DEV.QUEUE.1"}}}
 ```
 
-Then add a wrapper function in `config.clj` to read this settings.
+Then add a wrapper function in `config.clj` to read these settings.
 
 ```clojure
 ; src/wheel/infra/config.clj
@@ -191,7 +191,7 @@ Then define a new `mount` state `jms-ranging-session` that creates a JMS Session
   :stop (stop jms-ranging-session))
 ```
 
-Then create a new function `message-listener` and `start-consumer` to create the JMS message listener and start the JMS Consumer respectively. 
+Then create a new function `message-listener` and `start-consumer` to create the JMS message listener and start the JMS Consumer, respectively. 
 
 ```clojure
 ; src/wheel/infra/oms.clj
@@ -210,9 +210,9 @@ Then create a new function `message-listener` and `start-consumer` to create the
     consumer))
 ```
 
-<span class="callout">1</span> We are justing printing the received message to begin with.
+<span class="callout">1</span> We are justing printing the received message in this part and we'll be revisiting it soon.
 
-Finally use these function to define the `mount` state for ranging queue consumer
+Finally, use these function to define the `mount` state for ranging queue consumer.
 
 ```clojure
 ; src/wheel/infra/oms.clj
@@ -264,8 +264,8 @@ That's it!
 
 ## Summary
 
-In this blog post, we learned how to setup and consume messages from IBM-MQ in a Clojure application. Thanks to the first class JAVA interoperability support in Clojure, we are able to do it using IBM-MQ's native Java client. 
+In this blog post, we learned how to set up and consume messages from IBM-MQ in a Clojure application. Thanks to the first-class JAVA interoperability support in Clojure, we have done it using IBM-MQ's native Java client. 
 
-With this we are done with the setting up the infrastructure aspects of the application. We'll diving deep into the business side of the application in the upcoming blog posts. Stay tuned!
+With this, we are done with the setting up the infrastructure aspects of the application. We'll be diving deep into the business side of the application in the upcoming blog posts. Stay tuned!
 
 The source code associated with this part is available on [this GitHub](https://github.com/demystifyfp/BlogSamples/tree/v0.18/clojure/wheel) repository. 
