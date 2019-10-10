@@ -5,7 +5,7 @@ draft: true
 tags: ["clojure"]
 ---
 
-The Order Management System(OMS) of our client exposes its operations in the form of messages via [IBM-MQ](https://www.ibm.com/products/mq). In this blog post, we are going to focus on the setup the infrastructure to receive and process these message in our application. I'll also be sharing how we implemented the error (exception) handling across the application. 
+The Order Management System(OMS) of our client exposes its operations in the form of messages via [IBM-MQ](https://www.ibm.com/products/mq). In this blog post, we are going to focus on the setup the infrastructure to receive and process these message in our application. 
 
 > This blog post is a part 6 of the blog series [Building an E-Commerce Marketplace Middleware in Clojure]({{<relref "intro.md">}}).
 
@@ -139,11 +139,13 @@ For each items that our client sells in a marketplace, they will be adding it ma
 3. **Inventorying** - Upates the inventories of items.
 4. **Pricing** - Upates the prices of items.
 
-The OMS is configured to communciates these operations to the middleware via four different queues.
+The OMS is configured to communciates these operations to the middleware via four different queues named after this operation.
 
 ### Consuming Messages from IBM-MQ Queue
 
-Let's a new configuration item `settings` in the *config.edn* file to specify the queue names the middleware has to listen. 
+Let's add a new configuration item, `settings` in the *config.edn* file to specify the queue names that the middleware has to listen. 
+
+To start with let's add the ranging queue name alone.
 
 ```clojure
 ; resources/config.edn
@@ -151,7 +153,7 @@ Let's a new configuration item `settings` in the *config.edn* file to specify th
  :settings {:oms {:ranging-queue-name "DEV.QUEUE.1"}}}
 ```
 
-Then add a wrapper function in `config.clj` to read the settings.
+Then add a wrapper function in `config.clj` to read this settings.
 
 ```clojure
 ; src/wheel/infra/config.clj
@@ -159,3 +161,111 @@ Then add a wrapper function in `config.clj` to read the settings.
 (defn oms-settings []
   (get-in root [:settings :oms]))
 ```
+
+Now we the configuration in place to read the queue name. To read messages from this queue, we need to do two things.
+
+* Creating a new JMS [Session](https://docs.oracle.com/javaee/7/api/javax/jms/Session.html)
+* Adding a [MessageListener](https://docs.oracle.com/javaee/7/api/javax/jms/MessageListener.html)
+
+To perform this, let's add a new file *oms.clj*
+
+```bash
+> touch src/wheel/infra/oms.clj
+```
+
+Then define a new `mount` state `jms-ranging-session` that creates a JMS Session using the JMS Connection that we defined earlier. 
+
+```clojure
+; src/wheel/infra/oms.clj
+(ns wheel.infra.oms
+  (:require [wheel.infra.ibmmq :as ibmmq]
+            [mount.core :as mount])
+  (:import [javax.jms MessageListener Message]
+           [javax.jms Session]))
+
+(defn- stop [stoppable]
+  (.close stoppable))
+
+(mount/defstate jms-ranging-session
+  :start (.createSession ibmmq/jms-conn false Session/AUTO_ACKNOWLEDGE)
+  :stop (stop jms-ranging-session))
+```
+
+Then create a new function `message-listener` and `start-consumer` to create the JMS message listener and start the JMS Consumer respectively. 
+
+```clojure
+; src/wheel/infra/oms.clj
+; ...
+(defn- message-listener []
+  (proxy [MessageListener] []
+    (onMessage [^Message msg]
+      (let [msg (.getBody msg String)]
+        (prn "Received: " msg))))) ; <1>
+
+(defn- start-consumer [queue-name jms-session listener]
+  (let [ibmmq-queue-name (str "queue:///" queue-name)
+        destination      (.createQueue jms-session ibmmq-queue-name)
+        consumer         (.createConsumer jms-session destination)]
+    (.setMessageListener consumer listener)
+    consumer))
+```
+
+<span class="callout">1</span> We are justing printing the received message to begin with.
+
+Finally use these function to define the `mount` state for ranging queue consumer
+
+```clojure
+; src/wheel/infra/oms.clj
+; ...
+(ns wheel.infra.oms
+  (:require ;...
+            [wheel.infra.config :as config])
+  (:import ...))
+; ...
+(mount/defstate ranging-consumer
+  :start (let [queue-name (:ranging-queue-name (config/oms-settings))
+               listener   (message-listener)]
+           (start-consumer queue-name jms-ranging-session listener))
+  :stop (stop ranging-consumer))
+```
+
+Now we all set to receive messages from IBM-MQ and let's do a test drive.
+
+
+```clojure
+user==> (reset)
+:reloading (...)
+{:started ["#'wheel.infra.config/root"
+           "#'wheel.infra.database/datasource"
+           "#'wheel.infra.database/toucan"
+           "#'wheel.infra.ibmmq/jms-conn"
+           "#'wheel.infra.oms/jms-ranging-session"
+           "#'wheel.infra.oms/ranging-consumer"]}
+```
+
+To send a message in IBM-MQ, go to its [web console](https://localhost:9443/ibmmq/console/), log in using the admin credentials, `admin` and `passw0rd`, click the queue name `DEV.QUEUE.1`
+
+![](/img/clojure/blog/ecom-middleware/ranging-queue-web-console.png)
+
+Then click on the downward arrow button in the top of this widget to put a message in this queue. This will open a popup and enter `Hello, IBM-MQ!` in the text box and click *Put*.
+
+![](/img/clojure/blog/ecom-middleware/ranging-queue-sample-msg.png)
+
+You should see this message in the terminal that is running the REPL
+
+```bash
+lein # ...
+nREPL server started on port 52740 on host 127.0.0.1 # ...
+# ...
+"Received: " "Hello, IBM-MQ!"
+```
+
+That's it!
+
+## Summary
+
+In this blog post, we learned how to setup and consume messages from IBM-MQ in a Clojure application. Thanks to the first class JAVA interoperability support in Clojure, we are able to do it using IBM-MQ's native Java client. 
+
+With this we are done with the setting up the infrastructure aspects of the application. We'll diving deep into the business side of the application in the upcoming blog posts. Stay tuned!
+
+The source code associated with this part is available on [this GitHub](https://github.com/demystifyfp/BlogSamples/tree/v0.18/clojure/wheel) repository. 
