@@ -216,15 +216,23 @@ Let's do it
 
 ### Unified Message Handling & Exception Hadling 
 
-The message listener that we defined is the entry point for all the four business operation. The handling logic of the message will be as follows.
+The handling logic of all the messages will be as follows.
 
 ![](/img/clojure/blog/ecom-middleware/message-handling-process.png)
 
-* Upon receiving the message, the log the message as an OMS event to keep track of the messages that we recieved from the OMS.
+1. Upon receiving the message, the log the message as an OMS event to keep track of the messages that we recieved from the OMS.
 
-* Then we parse the message (more on this in the later blog post), if it is a failure, we will be logging it as a error in the form of a System event.
+2. Then we parse the message (more on this in the later blog post), if it is a failure, we will be logging it as a error in the form of a System event.
 
-* If parsing is successful, we will be performing the respective operation in the marketplace. If it succucceed, we log it a domain success event else we log it a domain failure event. These events treats the OMS event as the parent event. 
+3. If parsing is successful, for each channel in the message, we check whether the given channel exists. 
+
+4. If the channel exists, we will be performing the respective operation in the marketplace. If the operation succucceeds, we log it as a domain success event else we log it as a domain failure event. 
+
+5. If the channel not found, we'll be logging as a system event.
+
+Events from steps two to five, treats the OMS event (step one) as the parent event. 
+
+#### Adding OMS Event
 
 We don't have a spec for the OMS event yet. So, let's add it as a first step.
 
@@ -247,11 +255,85 @@ All the three event types are going to have payloads that provide extra informat
 Let's focus on ranging alone for now.
 
 ```clojure
-(s/def ::oms-event-name #{:oms/items-ranged}) 
-(s/def ::domain-event-name #{:ranging/succeeded})
-(s/def ::error-event-name #{:ranging/failed})
+; src/wheel/middleware/event.clj
+; ...
+(s/def ::oms-event-name #{:oms/items-ranged})
+(s/def ::domain-event-name #{:ranging/succeeded :ranging/failed})
+(s/def ::system-event-name #{:system/parsing-failed
+                             :system/channel-not-found})
+
+(s/def ::name ...
+; ...
 ```
 
-* `:oms/items-ranged` - Ranging message receive from OMS
-* `:ranging/succeeded` - Ranging operation successful in the maretplace
-* `` - 
+* `:oms/items-ranged` - Ranging message received from OMS
+* `:ranging/succeeded` - Ranging operation succeeded in the maretplace
+* `:ranging/failed` - Ranging operation failed in the maretplace
+* `:system/parsing-failed` - Parsing ranging message failed.
+* `:system/channel-not-found` - Channel specified in the ranging message not found.
+
+Earlier we had the had the spec for the `name` as `qualified-keyword?`. We have to change it to either one of the above.
+
+```diff
+# src/wheel/middleware/event.clj
+
+- (s/def ::name qualified-keyword?)
++ (s/def ::name (s/or :oms ::oms-event-name 
++                     :domain ::domain-event-name
++                     :system ::system-event-name))
+```
+
+Then define the payload type for the event-names specified above.
+
+```clojure
+; src/wheel/middleware/event.clj
+(ns wheel.middleware.event
+  (:require ; ...
+            [wheel.oms.item :as item]))
+; ...
+(defmulti payload-type :type)
+
+(s/def ::oms-message string?)
+(defmethod payload-type :oms/items-ranged [_]
+  (s/keys :req-un [::oms-message]))
+
+(s/def ::item-ids (s/coll-of ::item/id :min-count 1))
+(defmethod payload-type :ranging/succeeded [_] 
+  (s/keys :req-un [::item-ids]))
+
+(s/def ::error-message (s/and string? (complement clojure.string/blank?)))
+(s/def ::stacktrace (s/and string? (complement clojure.string/blank?)))
+(defmethod payload-type :ranging/failed [_]
+  (s/keys :req-un [::error-message ::stacktrace]))
+
+(defmethod payload-type :system/parsing-failed [_]
+  (s/keys :req-un [::error-message]))
+(defmethod payload-type :system/channel-not-found [_]
+  (s/keys :req-un [::channel-id]))
+
+(defmethod payload-type :default [_]
+  (s/keys :req-un [::type]))
+(s/def ::payload (s/multi-spec payload-type :type))
+
+(defmulti event-type ...
+; ...
+```
+
+Finally, add this `payload` spec in all the `event` spec.
+
+```diff
+# src/wheel/middleware/event.clj
+
+(defmethod event-type :system [_]
+-  (s/keys :req-un [::id ::name ::type ::level ::timestamp]
++  (s/keys :req-un [::id ::name ::type ::level ::timestamp ::payload]
+           :opt-un [::parent-id]))
+(defmethod event-type :domain [_]
+-  (s/keys :req-un [::id ::name ::type ::level ::timestamp 
++  (s/keys :req-un [::id ::name ::type ::level ::timestamp ::payload
+                    ::channel-id ::channel-name]
+           :opt-un [::parent-id]))
+(defmethod event-type :oms [_]
+-  (s/keys :req-un [::id ::name ::type ::level ::timestamp]))
++  (s/keys :req-un [::id ::name ::type ::level ::timestamp ::payload]))
+```
