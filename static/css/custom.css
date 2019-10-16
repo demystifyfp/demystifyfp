@@ -46,26 +46,26 @@ pre code {
   font-family: 'Open Sans', serif;
 }
 
-.rbl1 {
+.rbl1, .rbl7 {
   color: #ccc !important;
 }
 
-.rbl2 {
+.rbl2, .rbl8 {
   color: #0098e6 !important;
 }
 
-.rbl3 {
+.rbl3, .rbl9 {
   color: #e16d6d !important;
 }
 
-.rbl4 {
+.rbl4, .rbl10 {
   color: #3fa455 !important;
 }
 
-.rbl5 {
+.rbl5, .rbl1 {
   color: #c968e6 !important;
 }
 
-.rbl6 {
+.rbl6, .rbl12 {
   color: #999 !important;
 }
