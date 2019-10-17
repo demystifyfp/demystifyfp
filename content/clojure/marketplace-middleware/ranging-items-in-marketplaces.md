@@ -974,13 +974,4 @@ user=> (reset)
 
 Then put the valid XML ranging message of channel `UA` in IBMMQ, we should be able to see the new events in the database.
 
-```
-> psql -d wheel
-
-wheel=# select id, parent_id, type, name, channel_name, channel_id from event;
-      id      |  parent_id   |  type  |       name        | channel_name | channel_id
---------------+--------------+--------+-------------------+--------------+------------
- 4b3d021f-... |              | oms    | oms/items-ranged  |              |
- fcd79234-... | 4b3d021f-... | domain | ranging/succeeded | tata-cliq    | UA
-(2 rows)
-```
+![](/img/clojure/blog/ecom-middleware/appender-db-output.png)
