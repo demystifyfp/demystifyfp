@@ -11,6 +11,7 @@ The handling logic of all the messages will be as follows.
 
 ![](/img/clojure/blog/ecom-middleware/message-handling-process.png)
 
+
 1. Upon receiving the message, the log the message as an OMS event to keep track of the messages that we recieved from the OMS.
 
 2. Then we parse the message (more on this in the later blog post), if it is a failure, we will be logging it as a error in the form of a System event.
@@ -113,7 +114,7 @@ Then add the event payload spec as below
   (s/keys :req-un [::error-message ::message-type]))
 
 (defmethod payload-type :system/channel-not-found [_]
-  (s/keys :req-un [::channel-id]))
+  (s/keys :req-un [::channel-id ::message-type]))
 
 (defmethod payload-type :default [_]
   (s/keys :req-un [::type]))
@@ -155,7 +156,8 @@ To model the unhadled exception while processing a message from OMS, let's add n
 (s/def ::stacktrace (s/and string? (complement clojure.string/blank?)))
 
 (defmethod payload-type :system/processing-failed [_]
-  (s/keys :req-un [::error-message ::stacktrace]))
+  (s/keys :req-un [::error-message ::stacktrace]
+          :opt-un [::message-type]))
 
 ; ...
 ```
@@ -246,7 +248,8 @@ In the `message-listener` function, we are calling two functions `event/oms` to 
   (:import [java.util UUID]))
 ; ...
 
-(defn- event [event-name payload &{:keys [level type parent-id]
+(defn- event [event-name payload &{:keys [level type parent-id
+                                          channel-id channel-name]
                                    :or   {level :info
                                           type  :domain}}] ; <1>
   {:post [(s/assert ::event %)]}
@@ -256,9 +259,10 @@ In the `message-listener` function, we are calling two functions `event/oms` to 
                :level     level
                :type      type
                :payload   (assoc payload :type event-name)}]
-    (if parent-id
-      (assoc event :parent-id parent-id)
-      event)))
+    (cond-> event
+     parent-id (assoc :parent-id parent-id)
+     channel-id (assoc :channel-id channel-id)
+     channel-name (assoc :channel-name channel-name))))
 
 (defn oms [oms-event-name message]
   {:pre [(s/assert ::oms-event-name oms-event-name)
@@ -300,7 +304,7 @@ Let's also add the `parsing-failed` function to construct the `parsing-failed` e
          :level :error))
 ```
 
-#### Adding Message Handler
+#### Adding Generic Message Handler
 
 The `message-listener` function at the application boundary, creates the `oms-message` with the message received from IBM-MQ and pass it to the middleware to handle. This middleware's `handle` function also not implemented yet. So, let's add it as well.
 
@@ -323,11 +327,14 @@ The messages from OMS are XML encoded. So, the handler has to validate it agains
 (defmulti parse :type)
 (defmulti spec :type)
 
+(defmulti process (fn [oms-msg parsed-oms-message] ; <2>
+                    (:type oms-msg)))
+
 (defn- validate-message [oms-msg]
   (-> (xsd-resource-file-path oms-msg)
       io/resource
       io/as-file
-      (xsd/validate (:message oms-msg)))) ; <2>
+      (xsd/validate (:message oms-msg)))) ; <3>
 
 (defn handle [{:keys [id type]
                :as   oms-msg}]
@@ -337,17 +344,17 @@ The messages from OMS are XML encoded. So, the handler has to validate it agains
     [(event/parsing-failed id type err)]
     (let [parsed-oms-message (parse oms-msg)]
       (if (s/valid? (spec oms-msg) parsed-oms-message)
-        (throw (Exception. "todo")) ; <3>
+        (process oms-msg parsed-oms-message) ; <4>
         [(event/parsing-failed
           id type
           (s/explain-str (spec oms-msg) parsed-oms-message))]))))
 ```
 
-<span class="callout">1</span> We are defining three multimethods `xsd-resource-file-path`, `parse` & `spec` to get the XML schema file path in the *resources* directory, parse the XML message to Clojure data structure and to get the expected clojure.spec of the parsed message respectively. Each OMS message type (ranging, deranging, etc.,) has to have an implmentation for these multimethods. 
+<span class="callout">1</span> & <span class="callout">2</span> We are defining three multimethods `xsd-resource-file-path`, `parse` & `spec` to get the XML schema file path in the *resources* directory, parse the XML message to Clojure data structure and to get the expected clojure.spec of the parsed message respectively. The `process` multimethod abstracts the processing of the parsed message from OMS. Each OMS message type (ranging, deranging, etc.,) has to have an implmentation for these multimethods. 
 
-<span class="callout">2</span> The `validate-message` performs the XML schema based validation of the incoming message. We'll be adding the `wheel.xsd/validate` function shortly.
+<span class="callout">3</span> The `validate-message` performs the XML schema based validation of the incoming message. We'll be adding the `wheel.xsd/validate` function shortly.
 
-<span class="callout">3</span> We are leaving the implementation of handling a valid message as "todo" for a short while.
+<span class="callout">4</span> We are dispatching the parsed OMS message to the `process` multimethod.
 
 Then add a new file *xsd.clj* and implement the XML validation based on XSD as mentioned in this [stackoverflow answer](https://stackoverflow.com/questions/15732/whats-the-best-way-to-validate-an-xml-file-against-an-xsd-file)
 
@@ -398,10 +405,6 @@ A sample ranging message from the OMS would look like this
 
 The `EXTNChannelItemList` element(s) specifies which channel that we have to communicate and the `EXTNChannelItem` element(s) specifies the items that has to be ranged within that channel.
 
-##### Validating the Ranging XML message
-
-As a first step, we are going to validate whether the incoming message is a valid ranging message or not using the XSD file based [XML Validation](https://en.wikipedia.org/wiki/XML_validation).
-
 The XSD file for the ranging message is available in [this gist](https://gist.github.com/tamizhvendan/4544f0123bd30681be1c5198ed87522c#file-ranging-xsd)
 
 To keep this XSD file (and the future XSD files), create a new directory *oms/message_schema* under *resources* directory and download the gist there.
@@ -414,12 +417,20 @@ To keep this XSD file (and the future XSD files), create a new directory *oms/me
 - 'resources/oms/message_schema/ranging.xsd' saved 
 ```
 
+Then create the *ranging.clj* file under *middleware* directly and implement the `xsd-resource-file-path` multimethod which returns the above XSD file path.
 
-##### Defining Spec For Ranging Message
+```clojure
+; src/wheel/middleware/ranging.clj
+(ns wheel.middleware.ranging
+  (:require [wheel.middleware.core :as middleware]))
 
-The XML validation ensure that we are getting a valid XML message. However The XML message content has to be converted to a Clojure data strcture for further processing. Before doing that let's define the spec for the ranging message.
+(defmethod middleware/xsd-resource-file-path :ranging [_]
+  "oms/message_schema/ranging.xsd")
+```
 
-Given we are receiving the above XML as a message, we will be transforming it to a Clojure sequence as below
+Then let's define the spec for the ranging message.
+
+Given we are receiving the above sample XML as a message, we will be transforming it to a Clojure sequence as below
 
 ```clojure
 ({:channel-id "UA", :items ({:ean "EAN_1", :id "SKU1"} 
@@ -443,18 +454,17 @@ To add a spec for this, Let's add the spec for the `id` and the `ean` of the ite
 (s/def ::ean (s/and string? (complement clojure.string/blank?)))
 ```
 
-Then use these specs to define the spec for the ranging message.
-
-```bash
-> touch src/wheel/middleware/ranging.clj
-```
+Then use these specs to define the spec for the ranging message and return it in the `spec` multimethod implementation.
 
 ```clojure
 ; src/wheel/middleware/ranging.clj
 (ns wheel.middleware.ranging
-  (:require [clojure.spec.alpha :as s]
+  (:require ; ...
+            [clojure.spec.alpha :as s]
             [wheel.oms.item :as oms-item]
             [wheel.marketplace.channel :as channel]))
+
+; ...
 
 (s/def ::item
   (s/keys :req-un [::oms-item/ean ::oms-item/id]))
@@ -467,9 +477,10 @@ Then use these specs to define the spec for the ranging message.
 
 (s/def ::message
   (s/coll-of ::channel-items :min-count 1))
-```
 
-##### Parsing Ranging Message
+(defmethod middleware/spec :ranging [_]
+  ::message)
+```
 
 The next step is parsing the xml content to a ranging message that statsifies the above spec.
 
@@ -516,12 +527,11 @@ Let's do it
 
 ; ...
 
-(defn- to-channel-item [{:keys [EAN ItemID]}]
+(defn- to-item [{:keys [EAN ItemID]}]
   {:ean EAN
    :id ItemID})
 
-(defn- parse-message [message]
-  {:post [(s/assert ::message %)]}
+(defmethod middleware/parse :ranging [{:keys [message]}]
   (->> (StringBufferInputStream. message)
        xml/parse
        :content
@@ -530,7 +540,447 @@ Let's do it
        (group-by :ChannelID)
        (map (fn [[id xs]]
               {:channel-id  id
-               :items (map to-channel-item xs)}))))
+               :items (map to-item xs)}))))
 ```
 
 > Note: This kind of nested data transformation can also be acheieved using [XML Zippers](https://ravi.pckl.me/short/functional-xml-editing-using-zippers-in-clojure) or [Meander](https://github.com/noprompt/meander).
+
+The last multimethod that we need to define is `process`. To begin with let's throw an exception from this implementation to begin with.
+
+```clojure
+; src/wheel/middleware/ranging.clj
+; ...
+
+(defmethod middleware/process :ranging [_ ranging-message]
+  (throw (Exception. "todo")))
+```
+
+To load these multimethod defintions during application bootstrap, let's refer this namespace in the *infra/core.clj* file
+
+```clojure
+; src/wheel/infra/core.clj
+(ns wheel.infra.core
+  (:require ; ...
+            [wheel.middleware.ranging :as ranging]))
+; ...
+```
+
+### Revisiting Slack Appender
+
+To make the Slack appender that [we added earlier]({{<relref "using-slack-as-log-appender.md">}}) more meaningful, let's change the implementation of the `event->attachment` and `send-to-slack` function like below
+
+```clojure
+; src/wheel/infra/log_appender/slack.clj
+(ns wheel.infra.log-appender.slack
+  (:require [wheel.slack.webhook :as slack]
+            [wheel.infra.config :as config]
+            [cheshire.core :as json]))
+
+; ...
+
+(defn- event->attachment [{:keys [id channel-id channel-name parent-id payload]
+                           :or   {channel-name "N/A"
+                                  channel-id   "N/A"
+                                  parent-id    "N/A"}}]
+  {:color  :danger
+   :fields [{:title "Channel Name"
+             :value channel-name
+             :short true}
+            {:title "Channel Id"
+             :value channel-id
+             :short true}
+            {:title "Event Id"
+             :value id
+             :short true}
+            {:title "Parent Id"
+             :value parent-id
+             :short true}
+            {:title "Payload"
+             :value (str
+                     "```"
+                     (json/generate-string (dissoc payload :type)
+                                           {:pretty true})
+                     "```")}]})
+
+(defn- send-to-slack [{:keys [msg_]}]
+  (let [event      (read-string (force msg_))
+        text       (event->text event)
+        attachment (event->attachment event)]
+    (slack/post-message! (config/slack-log-webhook-url) text [attachment])))
+; ...
+```
+
+When we test drive the application by reloading the application in the REPL and putting the following the XML messages in the IBM MQ, we'll get the respective notification in the Slack.
+
+```xml
+<EXTNChannelList>
+</EXTNChannelList>
+```
+
+![](/img/clojure/blog/ecom-middleware/invalid-xml-slack-error.png)
+
+```xml
+<EXTNChannelList>
+  <EXTNChannelItemList>
+    <!-- An empty space in the Channel ID -->
+    <EXTNChannelItem ChannelID=" " EAN="EAN_1" ItemID="SKU1" RangeFlag="Y"/>
+  </EXTNChannelItemList>
+</EXTNChannelList>
+```
+
+![](/img/clojure/blog/ecom-middleware/invalid-spec-slack-error.png)
+
+Finally a valid ranging XML Message, will throw the "todo" exception.
+
+```xml
+<EXTNChannelList>
+  <EXTNChannelItemList>
+    <EXTNChannelItem ChannelID="UA" EAN="EAN_1" ItemID="SKU1" RangeFlag="Y"/>
+  </EXTNChannelItemList>
+</EXTNChannelList>
+```
+![](/img/clojure/blog/ecom-middleware/todo-slack-error.png)
+
+Everything is working as expected! Let's move to the final step of processing the `ranging` message.
+
+### Processing Ranging In A Marketplace Channel
+
+The processing of a OMS message in a marketplace channel involves the calling the respective API provided the marketplace. To keep this simple, we are going to a mock a HTTP server that accepts the following HTTP request
+
+```
+POST /channels/UA/ranging HTTP/1.1
+Host: localhost:3000
+Content-Type: application/json
+Authorization: Bearer top-secret!
+Accept: */*
+Content-Length: 79
+
+[{
+	"ean" : "EAN_1",
+	"sku" : "SKU_1"
+},{
+	"ean" : "EAN_2",
+	"sku" : "SKU_2"
+}]
+```
+
+To perform this action, let's add a `tata-cliq` API client that implements this fake request for ranging.
+
+```bash
+> mkdir src/wheel/marketplace/tata_cliq
+> touch src/wheel/marketplace/tata_cliq/api.clj
+```
+
+```clojure
+; src/wheel/marketplace/tata_cliq/api.clj
+(ns wheel.marketplace.tata-cliq.api
+  (:require [clj-http.client :as http]))
+
+(defn ranging [{:keys [base-url bearer-token]} channel-id items]
+  (let [url         (str base-url "/channels/" channel-id "/ranging")
+        auth-header (str "Bearer " bearer-token)]
+    (http/post url {:form-params  items
+                    :content-type :json
+                    :headers      {:authorization auth-header}})))
+```
+
+Then update the *config.edn* to store the channel settings (`base-url` & `bearer-token`) and expose it a via a function in *config.clj*.
+
+```clojure
+; resources/config.edn
+{:app      ...
+ :settings {...
+            :channels {"UA" {:channel-name  :tata-cliq
+                             :base-url     "http://localhost:3000"
+                             :bearer-token "top-secret!"}
+                       "UB" {:channel-name :tata-cliq
+                             :base-url     "http://localhost:3000"
+                             :bearer-token "top-secret!"}}}}}
+```
+
+```clojure
+; src/wheel/infra/config.clj
+; ...
+(defn get-channel-cofig [channel-id]
+  (get-in root [:settings :channels channel-id]))
+```
+
+To peform the ranging in the marketplace(s) in response to a message from OMS, we need to define a multimethod `process-ranging` that dispatches based on the `channel-name`
+
+```clojure
+; src/wheel/middleware/ranging.clj
+; ...
+(defmulti process-ranging (fn [{:keys [channel-name]} oms-msg ranging-message]
+                            channel-name))
+
+(defmethod middleware/process ... )
+```
+
+Then rewrite the `middleware/process` multimethod implementation to iterate through each channels in the ranging message, and invoke the `process-ranging` method after  getting their configuration. 
+
+```clojure
+; src/wheel/middleware/ranging.clj
+(ns wheel.middleware.ranging
+  (:require ; ...
+            [middleware.infra.event :as event]))
+; ...
+
+(defmethod middleware/process :ranging [{:keys [id]
+                                         :as oms-msg} ranging-message]
+  (for [{:keys [channel-id]
+         :as   ch-ranging-message} ranging-message]
+    (if-let [channel-config (config/get-channel-cofig channel-id)]
+      (try
+        (process-ranging channel-config oms-msg ch-ranging-message)
+        (catch Throwable ex
+          (event/processing-failed ex id :ranging channel-id (:channel-name channel-config))))
+      (event/channel-not-found id :ranging channel-id))))
+```
+
+The `channel-not-found` function and `processing-failed` function overload are not available, so let's add them.
+
+```clojure
+; src/wheel/middleware/event.clj
+; ...
+(defn processing-failed 
+  ([ex]
+   ; ... existing implementation
+   )
+  ([ex parent-id message-type channel-id channel-name]
+   {:post [(s/assert ::event %)]}
+   (event :system/processing-failed
+          (assoc (ex->map ex) :message-type message-type)
+          :parent-id parent-id
+          :channel-id channel-id
+          :channel-name channel-name
+          :level :error)))
+; ...
+(defn channel-not-found [parent-id message-type channel-id]
+  {:pre [(s/assert uuid? parent-id)
+         (s/assert ::oms-message/type message-type)
+         (s/assert ::channel/id channel-id)]
+   :post [(s/assert ::event %)]}
+  (event :system/channel-not-found
+         {:channel-id channel-id
+          :message-type message-type}
+         :parent-id parent-id
+         :type :system
+         :level :error))
+```
+
+As we'll be adding the `ranging/succeeded` event, let's add the spec for this as well.
+
+```clojure
+; src/wheel/middleware/event.clj
+(s/def ::domain-event-name #{:ranging/succeeded})
+; ...
+(s/def ::ranged-item
+  (s/keys :req-un [::item/ean ::item/id]))
+(s/def ::ranged-items (s/coll-of ::ranged-item :min-count 1))
+(defmethod payload-type :ranging/succeeded [_]
+  (s/keys :req-un [::ranged-items]))
+
+(defn ranging-succeeded [parent-id channel-id channel-name items]
+  {:pre [(s/assert uuid? parent-id)
+         (s/assert ::channel/id channel-id)
+         (s/assert ::channel/name channel-name)
+         (s/assert ::ranged-items items)]
+   :post [(s/assert ::event %)]}
+  (event :ranging/succeeded
+         {:ranged-items items}
+         :parent-id parent-id
+         :channel-id channel-id
+         :channel-name channel-name))
+```
+
+The final piece left is defining the `tata-cliq` implementation of the `process-ranging` multimethod.
+
+```bash
+> touch src/wheel/marketplace/tata_cliq/core.clj
+```
+
+```clojure
+; src/wheel/marketplace/tata_cliq/core.clj
+(ns wheel.marketplace.tata-cliq.core
+  (:require [wheel.marketplace.tata-cliq.api :as tata-cliq]
+            [wheel.middleware.ranging :as ranging]
+            [wheel.oms.message :as oms-message]
+            [wheel.middleware.event :as event]
+            [clojure.spec.alpha :as s]
+            [clojure.set :as set]))
+
+(defmethod ranging/process-ranging :tata-cliq
+  [{:keys [channel-name]
+    :as   channel-config}
+   {:keys [id]
+    :as   oms-msg}
+   {:keys [channel-id items]
+    :as   channel-items}]
+  {:pre [(s/assert ::oms-message/oms-message oms-msg)
+         (s/assert ::ranging/channel-items channel-items)]}
+  (try
+    (tata-cliq/ranging channel-config channel-id
+                       (map #(set/rename-keys % {:id :sku}) items)) ; <1>
+    (event/ranging-succeeded id channel-id channel-name items)
+    (catch Throwable ex
+      (event/processing-failed ex id :ranging channel-id channel-name))))
+```
+
+<span class="callout">1</span> The `item` in `tata-cliq` API doesn't have `id` instead it uses `sku`.
+
+### Setting Up Mock Server.
+
+To setup the Mock Server for tata-cliq we are going to use [Mockon](https://mockoon.com). The fake configuration is going to return HTTP Response `200` for the channel-id `UA` and `500` for the channel-id `UB`. This mockon setup is available in [this gist](https://gist.githubusercontent.com/tamizhvendan/4544f0123bd30681be1c5198ed87522c/raw/d032e1e380ab565fd1f1e1ccf5c03b630b10ab6e/mockon.json). You can import it in the Mockon and start the Mockon server.
+
+With this mock server, if we do a test drive of the implementation, we'll get the following output in the Slack
+
+```xml
+<EXTNChannelList>
+  <EXTNChannelItemList>
+    <EXTNChannelItem ChannelID="UC" EAN="EAN_1" ItemID="SKU1" RangeFlag="Y"/>
+  </EXTNChannelItemList>
+</EXTNChannelList>
+```
+
+![](/img/clojure/blog/ecom-middleware/ch-not-found-slack-error.png)
+
+If we try with the channel id `UB`, we'll get the processing failed exception
+
+```xml
+<EXTNChannelList>
+  <EXTNChannelItemList>
+    <EXTNChannelItem ChannelID="UB" EAN="EAN_1" ItemID="SKU1" RangeFlag="Y"/>
+  </EXTNChannelItemList>
+</EXTNChannelList>
+```
+
+![](/img/clojure/blog/ecom-middleware/ch-ranging-failed-slack-error.png)
+
+For the channel id `UA`, we'll get the ranging succeeded as expected in the standard output log
+
+```xml
+<EXTNChannelList>
+  <EXTNChannelItemList>
+    <EXTNChannelItem ChannelID="UA" EAN="EAN_1" ItemID="SKU1" RangeFlag="Y"/>
+  </EXTNChannelItemList>
+</EXTNChannelList>
+```
+
+```json
+{
+  "payload": {
+    "ranged-items": [
+      {
+        "ean": "EAN_1",
+        "id": "SKU1"
+      }
+    ],
+    "type": "ranging/succeeded"
+  },
+  "name": "ranging/succeeded",
+  "type": "domain",
+  "channel-name": "tata-cliq",
+  "level": "info",
+  "id": "f01e987b-bc72-41e9-9376-b362c3509273",
+  "parent-id": "8c22c6c1-9e00-463e-83bb-b2a77ab135a1",
+  "channel-id": "UA",
+  "timestamp": "2019-10-18T00:19:46.192+05:30"
+}
+```
+
+### Fixing DB Appender
+
+In the database appender that we added earlier, we need to modify to support all the event types and we also need to persist the event `payload`. To do it, let's add the database migration script.
+
+```
+> touch resources/db/migration/V201910180025__alter_event.sql
+```
+
+```sql
+-- resources/db/migration/V201910180025__alter_event.sql
+CREATE TYPE event_type AS ENUM ('domain', 'oms', 'system');
+
+ALTER TABLE event ALTER COLUMN channel_id DROP NOT NULL;
+ALTER TABLE event ALTER COLUMN channel_name DROP NOT NULL;
+ALTER TABLE event ADD COLUMN type event_type NOT NULL DEFAULT 'domain';
+ALTER TABLE event ADD COLUMN payload JSONB NOT NULL DEFAULT '{}';
+```
+
+The next step is adding the `event_type` and the `jsonb` type in the Toucan setup and use them in the `event` model defintion.
+
+```clojure
+; src/wheel/infra/database.clj
+(ns wheel.infra.database
+  (:require ;...
+            [cheshire.core :as json]))
+; ...
+(defn- to-pg-jsonb [value]
+  (doto (PGobject.)
+    (.setType "jsonb")
+    (.setValue (json/generate-string value))))
+
+(defn- configure-toucan []
+  ;...
+  (models/add-type! :event-type
+                    :in (pg-object-fn "event_type")
+                    :out keyword)
+  (models/add-type! :jsonb
+                    :in to-pg-jsonb
+                    :out #(json/parse-string (.getValue %) true)))
+```
+
+```clojure
+; src/wheel/model/event.clj
+; ...
+(models/defmodel Event :event
+  models/IModel
+  (types [_]
+         {; ...
+          :type         :event-type
+          :payload      :jsonb}))
+; ...
+```
+
+Then rewrite the `create!` event function as below
+
+```clojure
+; src/wheel/model/event.clj
+; ...
+(defn create! [new-event]
+  {:pre [(s/assert ::event/event new-event)]}
+  (db/insert! Event
+              (update new-event :timestamp timestamp->offset-date-time)))
+```
+
+Finally, rewrite the `append-to-db` function in the database appender to log all the event types.
+
+```clojure
+; src/wheel/infra/log_appender/database.clj
+; ...
+(defn- append-to-db [{:keys [msg_]}]
+  (let [evnt (read-string (force msg_))]
+    (event/create! evnt)))
+; ...
+```
+
+To test these change, run the migration script and reset the app from the REPL
+
+```clojure
+user=> (migrate-database)
+{:stopped ["#'wheel.infra.database/datasource"]}
+user=> (reset)
+{:started [...]}
+```
+
+Then put the valid XML ranging message of channel `UA` in IBMMQ, we should be able to see the new events in the database.
+
+```
+> psql -d wheel
+
+wheel=# select id, parent_id, type, name, channel_name, channel_id from event;
+      id      |  parent_id   |  type  |       name        | channel_name | channel_id
+--------------+--------------+--------+-------------------+--------------+------------
+ 4b3d021f-... |              | oms    | oms/items-ranged  |              |
+ fcd79234-... | 4b3d021f-... | domain | ranging/succeeded | tata-cliq    | UA
+(2 rows)
+```
