@@ -25,7 +25,7 @@ Events from steps two to five, treats the OMS event (step one) as the parent eve
 
 ### Revisiting Event Spec
 
-We don't have a spec for the OMS `event-type` yet. So, let's add it as a first step.
+As a first step towards implementing this unified message handling, let's start from adding the event type `:oms`.
 
 ```diff
 # src/wheel/middleware/event.clj
@@ -45,8 +45,6 @@ We don't have a spec for the OMS `event-type` yet. So, let's add it as a first s
 
 All the three event types are going to have payloads that provide extra information about an event. To specify different payload specs, we first need to define the different event names.
 
-Let's focus on ranging alone for now.
-
 ```clojure
 ; src/wheel/middleware/event.clj
 ; ...
@@ -63,7 +61,9 @@ Let's focus on ranging alone for now.
 * `:system/parsing-failed` - Parsing ranging message failed.
 * `:system/channel-not-found` - Channel specified in the ranging message not found.
 
-Earlier we had the had the spec for the `name` as `qualified-keyword?`. We have to change it to either one of the above.
+> We are leaving the `domain-event-name` spec as an empty set for now.
+
+Earlier we had the had the spec for the `name` as `qualified-keyword?`. We have to change it to either one of the above event-name spec.
 
 ```diff
 # src/wheel/middleware/event.clj
@@ -219,40 +219,135 @@ Here we are creating of message-listener for handling the `:ranging` message fro
 
 This design follows a varient of the [Functional Core, Imperative Shell](https://www.destroyallsoftware.com/talks/boundaries) technique.
 
+#### Adding Event Create Functions
 
-### Ranging Message
+In the `message-listener` function, we are calling two functions `event/oms` to `event/processing-failed` to create events. These functions doesn't exist yet. So, let's add it.
 
-A sample ranging message from the OMS would look like this
+```diff
+# src/wheel/offset-date-time.clj
 
-```xml
-<EXTNChannelList>
-  <EXTNChannelItemList>
-    <EXTNChannelItem ChannelID="UA" EAN="EAN_1" ItemID="SKU1" RangeFlag="Y"/>
-    <EXTNChannelItem ChannelID="UA" EAN="EAN_2" ItemID="SKU2" RangeFlag="Y"/>
-  </EXTNChannelItemList>
-  <EXTNChannelItemList>
-    <EXTNChannelItem ChannelID="UB" EAN="EAN_3" ItemID="SKU3" RangeFlag="Y"/>
-  </EXTNChannelItemList>
-</EXTNChannelList>
+  (ns wheel.offset-date-time
+    (:require [clojure.spec.alpha :as s])
+    (:import [java.time.format DateTimeFormatter DateTimeParseException]
+-            [java.time OffsetDateTime]))	           
++            [java.time OffsetDateTime ZoneId]))
+# ...
++ (defn ist-now []
++   (OffsetDateTime/now (ZoneId/of "+05:30")))
 ```
 
-The `EXTNChannelItemList` element(s) specifies which channel that we have to communicate and the `EXTNChannelItem` element(s) specifies the items that has to be ranged within that channel.
+```clojure
+; src/wheel/middleware/event.clj
+(ns wheel.middleware.event
+  (:require ; ...
+            [clojure.stacktrace :as stacktrace]
+            [wheel.offset-date-time :as offset-date-time]
+            [wheel.oms.message :as oms-message])
+  (:import [java.util UUID]))
+; ...
 
-### Validating the Ranging XML message
+(defn- event [event-name payload &{:keys [level type parent-id]
+                                   :or   {level :info
+                                          type  :domain}}] ; <1>
+  {:post [(s/assert ::event %)]}
+  (let [event {:id        (UUID/randomUUID)
+               :timestamp (str (offset-date-time/ist-now))
+               :name      event-name
+               :level     level
+               :type      type
+               :payload   (assoc payload :type event-name)}]
+    (if parent-id
+      (assoc event :parent-id parent-id)
+      event)))
 
-As a first step, we are going to validate whether the incoming message is a valid ranging message or not using the XSD file based [XML Validation](https://en.wikipedia.org/wiki/XML_validation).
+(defn oms [oms-event-name message]
+  {:pre [(s/assert ::oms-event-name oms-event-name)
+         (s/assert ::oms-message/message message)]
+   :post [(s/assert ::event %)]}
+  (event oms-event-name 
+         {:message message}
+         :type :oms))
 
-The XSD file for the ranging message is available in [this gist](https://gist.github.com/tamizhvendan/4544f0123bd30681be1c5198ed87522c#file-ranging-xsd)
+(defn- ex->map [ex]
+  {:error-message (with-out-str (stacktrace/print-throwable ex))
+   :stacktrace (with-out-str (stacktrace/print-stack-trace ex 3))})
 
-To keep this XSD file (and the future XSD files), create a new directory *oms/message_schema* under *resources* directory and download the gist there.
+(defn processing-failed [ex]
+  {:post [(s/assert ::event %)]}
+  (event :system/processing-failed
+         (ex->map ex)
+         :type :system
+         :level :error))
+```
+
+<span class="callout">1</span> The `event` function takes the name and payload (without type) of the event along with set a [keyword arguments](https://clojure.org/guides/destructuring#_keyword_arguments) and constructs a Clojure map that conforms to the `event` spec.
+
+Let's also add the `parsing-failed` function to construct the `parsing-failed` event which we will be using shortly.
+
+```clojure
+; src/wheel/middleware/event.clj
+; ...
+(defn parsing-failed [parent-id message-type error-message]
+  {:pre [(s/assert uuid? parent-id)
+         (s/assert ::oms-message/type message-type)
+         (s/assert ::error-message error-message)]
+   :post [(s/assert ::event %)]}
+  (event :system/parsing-failed 
+         {:error-message error-message
+          :message-type message-type}
+         :parent-id parent-id
+         :type :system
+         :level :error))
+```
+
+#### Adding Message Handler
+
+The `message-listener` function at the application boundary, creates the `oms-message` with the message received from IBM-MQ and pass it to the middleware to handle. This middleware's `handle` function also not implemented yet. So, let's add it as well.
 
 ```bash
-> mkdir -p resources/oms/message_schema
-> wget https://gist.githubusercontent.com/tamizhvendan/4544f0123bd30681be1c5198ed87522c/raw/2c2112bde069f6d002c184e8cfc5a6db77fbebcb/ranging.xsd -P resources/oms/message_schema 
-
-# ...
-- 'resources/oms/message_schema/ranging.xsd' saved 
+> touch src/wheel/middleware/core.clj
 ```
+
+The messages from OMS are XML encoded. So, the handler has to validate it against a [XML schema](https://en.wikipedia.org/wiki/XML_Schema_(W3C)). If it valid, then it has to be parsed to a clojure data structure (sequence of maps). This parsed data structure is also validated but this time using clojure.spec to make sure that the message is a processable one. If the validation fails, we'll be returning the `parsing-failed` events.
+
+```clojure
+(ns wheel.middleware.core
+  (:require [clojure.spec.alpha :as s]
+            [clojure.java.io :as io]
+            [wheel.middleware.event :as event]
+            [wheel.oms.message :as oms-message]
+            [wheel.xsd :as xsd]))
+
+; <1>
+(defmulti xsd-resource-file-path :type) 
+(defmulti parse :type)
+(defmulti spec :type)
+
+(defn- validate-message [oms-msg]
+  (-> (xsd-resource-file-path oms-msg)
+      io/resource
+      io/as-file
+      (xsd/validate (:message oms-msg)))) ; <2>
+
+(defn handle [{:keys [id type]
+               :as   oms-msg}]
+  {:pre  [(s/assert ::oms-message/oms-message oms-msg)]
+   :post [(s/assert (s/coll-of ::event/event :min-count 1) %)]}
+  (if-let [err (validate-message oms-msg)]
+    [(event/parsing-failed id type err)]
+    (let [parsed-oms-message (parse oms-msg)]
+      (if (s/valid? (spec oms-msg) parsed-oms-message)
+        (throw (Exception. "todo")) ; <3>
+        [(event/parsing-failed
+          id type
+          (s/explain-str (spec oms-msg) parsed-oms-message))]))))
+```
+
+<span class="callout">1</span> We are defining three multimethods `xsd-resource-file-path`, `parse` & `spec` to get the XML schema file path in the *resources* directory, parse the XML message to Clojure data structure and to get the expected clojure.spec of the parsed message respectively. Each OMS message type (ranging, deranging, etc.,) has to have an implmentation for these multimethods. 
+
+<span class="callout">2</span> The `validate-message` performs the XML schema based validation of the incoming message. We'll be adding the `wheel.xsd/validate` function shortly.
+
+<span class="callout">3</span> We are leaving the implementation of handling a valid message as "todo" for a short while.
 
 Then add a new file *xsd.clj* and implement the XML validation based on XSD as mentioned in this [stackoverflow answer](https://stackoverflow.com/questions/15732/whats-the-best-way-to-validate-an-xml-file-against-an-xsd-file)
 
@@ -284,31 +379,43 @@ Then add a new file *xsd.clj* and implement the XML validation based on XSD as m
 
 This `validate` function takes a `xsd-file` of type `java.io.File` and the `xml-content` of type `String`. It returns either `nil` if the `xml-content` conforms to the XSD file provided or the validation error message otherwise. 
 
-Let's validate this in the REPL.
 
-```clojure
-wheel.xsd ==> (let [xsd-file (clojure.java.io/as-file 
-                              (clojure.java.io/resource 
-                                "oms/message_schema/ranging.xsd"))
-                    sample "
-                <EXTNChannelList>
-                  <EXTNChannelItemList>
-                    <EXTNChannelItem ChannelID=\"UA\" EAN=\"EAN_1\" 
-                                    ItemID=\"SKU1\" RangeFlag=\"Y\"/>
-                    <EXTNChannelItem ChannelID=\"UA\" EAN=\"EAN_2\" 
-                                    ItemID=\"SKU2\" RangeFlag=\"Y\"/>
-                  </EXTNChannelItemList>
-                  <EXTNChannelItemList>
-                    <EXTNChannelItem ChannelID=\"UB\" EAN=\"EAN_3\" 
-                                    ItemID=\"SKU3\" RangeFlag=\"Y\"/>
-                  </EXTNChannelItemList>
-                </EXTNChannelList>
-                  "]
-                (validate xsd-file sample))
-nil
+#### Adding Ranging Message Handler
+
+A sample ranging message from the OMS would look like this
+
+```xml
+<EXTNChannelList>
+  <EXTNChannelItemList>
+    <EXTNChannelItem ChannelID="UA" EAN="EAN_1" ItemID="SKU1" RangeFlag="Y"/>
+    <EXTNChannelItem ChannelID="UA" EAN="EAN_2" ItemID="SKU2" RangeFlag="Y"/>
+  </EXTNChannelItemList>
+  <EXTNChannelItemList>
+    <EXTNChannelItem ChannelID="UB" EAN="EAN_3" ItemID="SKU3" RangeFlag="Y"/>
+  </EXTNChannelItemList>
+</EXTNChannelList>
 ```
 
-### Defining Spec For Ranging Message
+The `EXTNChannelItemList` element(s) specifies which channel that we have to communicate and the `EXTNChannelItem` element(s) specifies the items that has to be ranged within that channel.
+
+##### Validating the Ranging XML message
+
+As a first step, we are going to validate whether the incoming message is a valid ranging message or not using the XSD file based [XML Validation](https://en.wikipedia.org/wiki/XML_validation).
+
+The XSD file for the ranging message is available in [this gist](https://gist.github.com/tamizhvendan/4544f0123bd30681be1c5198ed87522c#file-ranging-xsd)
+
+To keep this XSD file (and the future XSD files), create a new directory *oms/message_schema* under *resources* directory and download the gist there.
+
+```bash
+> mkdir -p resources/oms/message_schema
+> wget https://gist.githubusercontent.com/tamizhvendan/4544f0123bd30681be1c5198ed87522c/raw/2c2112bde069f6d002c184e8cfc5a6db77fbebcb/ranging.xsd -P resources/oms/message_schema 
+
+# ...
+- 'resources/oms/message_schema/ranging.xsd' saved 
+```
+
+
+##### Defining Spec For Ranging Message
 
 The XML validation ensure that we are getting a valid XML message. However The XML message content has to be converted to a Clojure data strcture for further processing. Before doing that let's define the spec for the ranging message.
 
@@ -362,7 +469,7 @@ Then use these specs to define the spec for the ranging message.
   (s/coll-of ::channel-items :min-count 1))
 ```
 
-### Parsing Ranging Message
+##### Parsing Ranging Message
 
 The next step is parsing the xml content to a ranging message that statsifies the above spec.
 
