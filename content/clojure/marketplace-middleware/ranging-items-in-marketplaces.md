@@ -51,7 +51,7 @@ Let's focus on ranging alone for now.
 ; src/wheel/middleware/event.clj
 ; ...
 (s/def ::oms-event-name #{:oms/items-ranged})
-(s/def ::domain-event-name #{:ranging/succeeded :ranging/failed})
+(s/def ::domain-event-name #{})
 (s/def ::system-event-name #{:system/parsing-failed
                              :system/channel-not-found})
 
@@ -60,8 +60,6 @@ Let's focus on ranging alone for now.
 ```
 
 * `:oms/items-ranged` - Ranging message received from OMS
-* `:ranging/succeeded` - Ranging operation succeeded in the maretplace
-* `:ranging/failed` - Ranging operation failed in the maretplace
 * `:system/parsing-failed` - Parsing ranging message failed.
 * `:system/channel-not-found` - Channel specified in the ranging message not found.
 
@@ -101,7 +99,6 @@ Then add the event payload spec as below
 ; src/wheel/middleware/event.clj
 (ns wheel.middleware.event
   (:require ; ...
-            [wheel.oms.item :as item]
             [wheel.oms.message :as oms-message]))
 ; ...
 (defmulti payload-type :type)
@@ -109,14 +106,7 @@ Then add the event payload spec as below
 (defmethod payload-type :oms/items-ranged [_]
   (s/keys :req-un [::oms-message/message]))
 
-(s/def ::item-ids (s/coll-of ::item/id :min-count 1))
-(defmethod payload-type :ranging/succeeded [_] 
-  (s/keys :req-un [::item-ids]))
-
 (s/def ::error-message (s/and string? (complement clojure.string/blank?)))
-(s/def ::stacktrace (s/and string? (complement clojure.string/blank?)))
-(defmethod payload-type :ranging/failed [_]
-  (s/keys :req-un [::error-message ::stacktrace]))
 
 (s/def ::message-type ::oms-message/type)
 (defmethod payload-type :system/parsing-failed [_]
@@ -157,11 +147,17 @@ Finally, add this `payload` spec in all the `event` spec.
 To model the unhadled exception while processing a message from OMS, let's add new event name `:system/processing-failed`.
 
 ```clojure
+; src/wheel/middleware/event.clj
+; ...
 (s/def ::system-event-name #{ ;...
                              :system/processing-failed})
 ; ...
+(s/def ::stacktrace (s/and string? (complement clojure.string/blank?)))
+
 (defmethod payload-type :system/processing-failed [_]
   (s/keys :req-un [::error-message ::stacktrace]))
+
+; ...
 ```
 
 
@@ -182,21 +178,33 @@ Let's start it from the rewriting message listener that we implemented in the [l
   ; ...
   )
 ; ...
-(defn- message-listener [message-type oms-event-name]
+(defn- message-listener [message-type oms-event-name] ; <2>
   (proxy [MessageListener] []
     (onMessage [^Message msg]
       (try
         (let [message   (.getBody msg String)
-              oms-event (event/oms oms-event-name message)] ; <2>
-          (->> (middleware/handle {:id      (:id oms-event)
+              oms-event (event/oms oms-event-name message)] ; <3>
+          (->> (middleware/handle {:id      (:id oms-event) ; <4>
                                    :message message
-                                   :type    message-type}) ; <3>
-               (cons oms-event) ; <4>
-               log/write-all!)) ; <5>
-        (catch Throwable ex ; <6>
-          (log/write! (event/processing-failed ex)))))))
+                                   :type    message-type}) 
+               (cons oms-event) ; <5>
+               log/write-all!)) ; <6>
+        (catch Throwable ex 
+          (log/write! (event/processing-failed ex))))))) ; <7>
 ; ...
 ```
+
+<span class="callout">1</span> & <span class="callout">4</span> The namespace `wheel.middleware.core` doesn't exist yet. We'll be adding it few minutes. This namespace is going to have a function `handle` that takes `oms-message` and performs the required actions in the marketplace. Then it returns a collection of events that represent the results of these actions. Think of this like a router in a web application.
+
+<span class="callout">2</span> The rewritten version of the `message-listener` function now takes two parameters, `message-type` and  `oms-event-name`. This parameters make it generic for processing the different types of messages from OMS.
+
+<span class="callout">3</span> & <span class="callout">7</span> The `oms` and `processing-failed` functions in the `wheel.middleware.event` namespace are also not added yet and we'll be adding them in the next step. This functions constructs a event of type `oms` and `system` with the paramters passed.
+
+<span class="callout">5</span> We are prepending the `oms-event` with the results from the `handle` functions. This `oms-event` is the parent event that triggered all other events 
+
+<span class="callout">6</span> Once, we got all the events, we are writing in the log using the `write-all!` function that we defined earlier. 
+
+As we have changed the signature of the `message-listener` function, let's update the `ranging-consumer` state that we defined using it.
 
 ```diff
   (mount/defstate ranging-consumer
@@ -207,17 +215,9 @@ Let's start it from the rewriting message listener that we implemented in the [l
     :stop (stop ranging-consumer))
 ```
 
-<span class="callout">1</span>
+Here we are creating of message-listener for handling the `:ranging` message from the OMS and we name the message received from OMS as `:oms/items-ranged`
 
-<span class="callout">2</span>
-
-<span class="callout">3</span>
-
-<span class="callout">4</span>
-
-<span class="callout">5</span>
-
-<span class="callout">6</span>
+This design follows a varient of the [Functional Core, Imperative Shell](https://www.destroyallsoftware.com/talks/boundaries) technique.
 
 
 ### Ranging Message
