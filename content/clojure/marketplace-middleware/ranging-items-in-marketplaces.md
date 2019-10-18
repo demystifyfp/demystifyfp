@@ -1,13 +1,17 @@
 ---
-title: "Ranging and Deranging Items In E-Commerce Marketplaces"
+title: "Ranging Items In E-Commerce Marketplaces"
 date: 2019-10-11T12:07:27+05:30
 draft: true
 tags: ["clojure"]
 ---
 
+In this seventh part of the blog series [Building an E-Commerce Marketplace Middleware in Clojure]({{<relref "intro.md">}}), I am going to share how we implemented the business operation(s) from the client's Order Management System(OMS) across marketplaces by processing the messages from IBM-MQ. 
+
+**Ranging** is an activity in the OMS that sets the visibility of an item in a marketplace to true, so that it can be listed for sale. The reverse operation is **Deranging** which unlist the item from the marketplace. There are more operations **Inventorying** and **Pricing** which updates the inventory and the pricing of the items in the marketplace respectively. When the back-office team of the Client perform any of these operation in their OMS, it communicates the operation to the middleware through IBM-MQ. These messages are encoded using XML.
+
 ### Unified Message Handling
 
-The handling logic of all the messages will be as follows.
+The handling logic of all these operational messages will be as follows.
 
 ![](/img/clojure/blog/ecom-middleware/message-handling-process.png)
 
@@ -23,6 +27,8 @@ The handling logic of all the messages will be as follows.
 5. If the channel not found, we'll be logging as a system event.
 
 Events from steps two to five, treats the OMS event (step one) as the parent event. 
+
+In the rest of the blog post, we'll be talking about the implemantion of Ranging message and the marketplace [Tata-CliQ](https://www.tatacliq.com/) alone.
 
 ### Revisiting Event Spec
 
