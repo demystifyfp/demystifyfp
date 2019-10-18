@@ -7,7 +7,16 @@ tags: ["clojure"]
 
 In this seventh part of the blog series [Building an E-Commerce Marketplace Middleware in Clojure]({{<relref "intro.md">}}), I am going to share how we implemented the business operation(s) from the client's Order Management System(OMS) across marketplaces by processing the messages from IBM-MQ. 
 
-**Ranging** is an activity in the OMS that sets the visibility of an item in a marketplace to true, so that it can be listed for sale. The reverse operation is **Deranging** which unlist the item from the marketplace. There are more operations **Inventorying** and **Pricing** which updates the inventory and the pricing of the items in the marketplace respectively. When the back-office team of the Client perform any of these operation in their OMS, it communicates the operation to the middleware through IBM-MQ. These messages are encoded using XML.
+**Ranging** is an activity in the OMS that sets the visibility of an item in a marketplace to true, so that it can be listed for sale. The reverse operation is **Deranging** which unlist the item from the marketplace. There are two more operations **Inventorying** and **Pricing** which updates the inventory and the pricing of the items in the marketplace respectively. 
+
+When the back-office team of the Client perform any of these operation in their OMS, it communicates the operation to the middleware through IBM-MQ. These messages are encoded using XML.
+
+It is going to be a long post. So, here is a sneak preview of what we'll be learning on the Clojure implemenation front.
+
+* A varient of the [Functional Core, Imperative Shell](https://www.destroyallsoftware.com/talks/boundaries) technique in action.
+* More Clojure.Spec (and multi-spec) and asserting the public function parameters using it.
+* XML Parsing & Validation
+* Persisting JSON data in PostgreSQL using Toucan and much more.
 
 ### Unified Message Handling
 
@@ -16,9 +25,9 @@ The handling logic of all these operational messages will be as follows.
 ![](/img/clojure/blog/ecom-middleware/message-handling-process.png)
 
 
-1. Upon receiving the message, the log the message as an OMS event to keep track of the messages that we recieved from the OMS.
+1. Upon receiving the message, we log the message as an OMS event to keep track of the messages that we recieved from the OMS.
 
-2. Then we parse the message (more on this in the later blog post), if it is a failure, we will be logging it as a error in the form of a System event.
+2. Then we parse the message, if it is a failure, we will be logging it as a error in the form of a System event.
 
 3. If parsing is successful, for each channel in the message, we check whether the given channel exists. 
 
@@ -208,7 +217,7 @@ Let's start it from the rewriting message listener that we implemented in the [l
 
 <span class="callout">3</span> & <span class="callout">7</span> The `oms` and `processing-failed` functions in the `wheel.middleware.event` namespace are also not added yet and we'll be adding them in the next step. This functions constructs a event of type `oms` and `system` with the paramters passed.
 
-<span class="callout">5</span> We are prepending the `oms-event` with the results from the `handle` functions. This `oms-event` is the parent event that triggered all other events 
+<span class="callout">5</span> We are prepending the `oms-event` with the results from the `handle` functions. This `oms-event` is the parent event that triggered all the other events 
 
 <span class="callout">6</span> Once, we got all the events, we are writing in the log using the `write-all!` function that we defined earlier. 
 
@@ -318,7 +327,9 @@ The `message-listener` function at the application boundary, creates the `oms-me
 > touch src/wheel/middleware/core.clj
 ```
 
-The messages from OMS are XML encoded. So, the handler has to validate it against a [XML schema](https://en.wikipedia.org/wiki/XML_Schema_(W3C)). If it valid, then it has to be parsed to a clojure data structure (sequence of maps). This parsed data structure is also validated but this time using clojure.spec to make sure that the message is a processable one. If the validation fails, we'll be returning the `parsing-failed` events.
+The messages from OMS are XML encoded. So, the handler has to validate it against a [XML schema](https://en.wikipedia.org/wiki/XML_Schema_(W3C)). If it valid, then it has to be parsed to a clojure data structure (sequence of maps). 
+
+This parsed data structure is also needs to be validated using clojure.spec to make sure that the message is a processable one. If the validation fails in either one of this, we'll be returning the `parsing-failed` event.
 
 ```clojure
 (ns wheel.middleware.core
@@ -551,7 +562,7 @@ Let's do it
 
 > Note: This kind of nested data transformation can also be acheieved using [XML Zippers](https://ravi.pckl.me/short/functional-xml-editing-using-zippers-in-clojure) or [Meander](https://github.com/noprompt/meander).
 
-The last multimethod that we need to define is `process`. To begin with let's throw an exception from this implementation to begin with.
+The last multimethod that we need to define is `process`. To begin with let's throw an exception in the implementation.
 
 ```clojure
 ; src/wheel/middleware/ranging.clj
@@ -716,7 +727,9 @@ To peform the ranging in the marketplace(s) in response to a message from OMS, w
 ```clojure
 ; src/wheel/middleware/ranging.clj
 ; ...
-(defmulti process-ranging (fn [{:keys [channel-name]} oms-msg ranging-message]
+(defmulti process-ranging (fn [{:keys [channel-name]} 
+                               oms-msg 
+                               ranging-message]
                             channel-name))
 
 (defmethod middleware/process ... )
@@ -824,12 +837,9 @@ The final piece left is defining the `tata-cliq` implementation of the `process-
     :as   channel-items}]
   {:pre [(s/assert ::oms-message/oms-message oms-msg)
          (s/assert ::ranging/channel-items channel-items)]}
-  (try
-    (tata-cliq/ranging channel-config channel-id
-                       (map #(set/rename-keys % {:id :sku}) items)) ; <1>
-    (event/ranging-succeeded id channel-id channel-name items)
-    (catch Throwable ex
-      (event/processing-failed ex id :ranging channel-id channel-name))))
+  (tata-cliq/ranging channel-config channel-id
+                     (map #(set/rename-keys % {:id :sku}) items)) ; <1>
+  (event/ranging-succeeded id channel-id channel-name items))
 ```
 
 <span class="callout">1</span> The `item` in `tata-cliq` API doesn't have `id` instead it uses `sku`.
@@ -898,7 +908,7 @@ For the channel id `UA`, we'll get the ranging succeeded as expected in the stan
 
 In the database appender that we added earlier, we need to modify to support all the event types and we also need to persist the event `payload`. To do it, let's add the database migration script.
 
-```
+```bash
 > touch resources/db/migration/V201910180025__alter_event.sql
 ```
 
@@ -981,3 +991,13 @@ user=> (reset)
 Then put the valid XML ranging message of channel `UA` in IBMMQ, we should be able to see the new events in the database.
 
 ![](/img/clojure/blog/ecom-middleware/appender-db-output.png)
+
+That's it!
+
+## Summary
+
+Thanks for reading the whole article. I believe you'd have got an high level idea of our project design and implementation. Feel free to drop a comment if you'd like discuss further!
+
+In the next blog post, we are going to implement the other side of the communication, marketplace to OMS in which we'll be implemeting some cron jobs that reads the information from the marketplace and relay it to the OMS. Stay tuned!
+
+The source code associated with this part is available on [this GitHub](https://github.com/demystifyfp/BlogSamples/tree/0.19/clojure/wheel) repository. 
