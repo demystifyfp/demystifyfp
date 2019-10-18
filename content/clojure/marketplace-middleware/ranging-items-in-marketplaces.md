@@ -1,7 +1,6 @@
 ---
 title: "Ranging Items In E-Commerce Marketplaces"
-date: 2019-10-11T12:07:27+05:30
-draft: true
+date: 2019-10-18T20:58:27+05:30
 tags: ["clojure"]
 ---
 
@@ -11,7 +10,7 @@ In this seventh part of the blog series [Building an E-Commerce Marketplace Midd
 
 The back-office team of the Client perform these operations in their OMS. In turn, the OMS communicates the performed action to the middleware through IBM-MQ using XML encoded message.
 
-It is going to be a long post. So, here is a sneak preview of what we'll be learning on the Clojure implementation front.
+This blog post is going to be a long one. So, here is a sneak preview of what we'll be learning on the Clojure implementation front.
 
 * A variant of the [Functional Core, Imperative Shell](https://www.destroyallsoftware.com/talks/boundaries) technique in action.
 * More Clojure.Spec (and multi-spec) and asserting the public function parameters using it.
@@ -25,7 +24,7 @@ The handling logic of all these operational messages will be as follows.
 ![](/img/clojure/blog/ecom-middleware/message-handling-process.png)
 
 
-1. Upon receiving the message, we log the message as an OMS event to keep track of the messages that we received from the OMS.
+1. Upon receiving the message, we log the message as an OMS event. It help us to keep track of the messages that we received from the OMS.
 
 2. Then we parse the message. If it is a failure, we will be logging it as an error in the form of a System event.
 
