@@ -46,26 +46,50 @@ pre code {
   font-family: 'Open Sans', serif;
 }
 
-.rbl1, .rbl7 {
+.rbl1 {
   color: #ccc !important;
 }
 
-.rbl2, .rbl8 {
+.rbl2 {
   color: #0098e6 !important;
 }
 
-.rbl3, .rbl9 {
+.rbl3 {
   color: #e16d6d !important;
 }
 
-.rbl4, .rbl10 {
+.rbl4 {
   color: #3fa455 !important;
 }
 
-.rbl5, .rbl1 {
+.rbl5 {
   color: #c968e6 !important;
 }
 
-.rbl6, .rbl12 {
-  color: #999 !important;
+.rbl6 {
+  color: #999999 !important;
+}
+
+.rbl7 {
+  color: #E69F00 !important;
+}
+
+.rbl8 {
+  color: #56B4E9 !important;
+}
+
+.rbl9 {
+  color: #009E73 !important;
+}
+
+.rbl10 {
+  color: #F0E442 !important;
+}
+
+.rbl11 {
+  color: #0072B2 !important;
+}
+
+.rbl12 {
+  color: #CC79A7 !important;
 }
