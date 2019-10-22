@@ -176,7 +176,9 @@ The `config/get-all-cron-jobs` function in the above section is not a part of ou
 
 ## Defining Allocate Order Job
 
-One of the vital cron jobs of the middleware is allocating an order. It periodically polls for new orders on a marketplace channel and allocates them in the OMS if any. In this blog post, we are going to look at how we processed the new orders from Tata-CliQ. As we did it in the last blog post, we are going to use a fake implementation of their new orders API.
+One of the vital cron jobs of the middleware is allocating an order. It periodically polls for new orders on a marketplace channel and allocates them in the OMS if any. 
+
+In this blog post, we are going to look at how we processed the new orders from Tata-CliQ. As we did it in the last blog post, we are going to use a fake implementation for their new orders API.
 
 As all the cron jobs are going to pull the channel and cron configuration information from the job context, which we set during during the job creation in the `create-job` function, and invoke a function in the channel, let's create a standard handle function.
 
@@ -336,7 +338,7 @@ As a first step let's define a spec for this
 
 ```clojure
 ; src/wheel/oms/address.clj
-	(ns wheel.oms.address
+(ns wheel.oms.address
   (:require [clojure.spec.alpha :as s]
             [wheel.string :as w-str]))
 
