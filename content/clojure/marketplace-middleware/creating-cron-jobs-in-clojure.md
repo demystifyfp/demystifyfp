@@ -1,8 +1,7 @@
 ---
 title: "Creating Cron Jobs in Clojure"
-date: 2019-10-21T20:01:42+05:30
+date: 2019-10-22T21:34:42+05:30
 tags: ["clojure"]
-draft: true
 ---
 
 In the [last blog post]({{<relref "ranging-items-in-marketplaces.md">}}), we processed the messages from IBM-MQ and relayed the information to the marketplace. In this blog post, we are going to focus on adding cron jobs to our existing infrastructure. The cron jobs pull the data from the marketplace, perform some transformation and send it to the Order Management System(OMS) via IBM-MQ.
