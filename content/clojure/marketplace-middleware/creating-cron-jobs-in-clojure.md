@@ -5,15 +5,15 @@ tags: ["clojure"]
 draft: true
 ---
 
-In the [last blog post]({{<relref "ranging-items-in-marketplaces.md">}}), we processed the messages from IBM-MQ and relayed the information to the marketplace. In this blog post, we are going to focus on adding cron job to our existing infrastructure. The cron jobs pull the data from the marketplace, perform some transformation and send it to the Order Management System(OMS) via IBM-MQ.
+In the [last blog post]({{<relref "ranging-items-in-marketplaces.md">}}), we processed the messages from IBM-MQ and relayed the information to the marketplace. In this blog post, we are going to focus on adding cron jobs to our existing infrastructure. The cron jobs pull the data from the marketplace, perform some transformation and send it to the Order Management System(OMS) via IBM-MQ.
 
 > This blog post is a part 8 of the blog series [Building an E-Commerce Marketplace Middleware in Clojure]({{<relref "intro.md">}}).
 
-We will be following the [Functional Core, Imperative Shell](https://www.destroyallsoftware.com/talks/boundaries) technique in this implemenation as well by keeping the Cron job infrastructure at the application boundary.
+We will be following the [Functional Core, Imperative Shell](https://www.destroyallsoftware.com/talks/boundaries) technique in this implementation as well by keeping the Cron job infrastructure at the application boundary.
 
 ## Leveraging Quartzite
 
-We are going to leverage [Quartzite](http://clojurequartz.info/), scheduling library for Clojure to create and run cron jobs in our project. Quartzite is a Clojure wrapper of Java's [Quartz Job Scheduler](http://www.quartz-scheduler.org/), one of the most powerful and feature rich open source scheduling tools.
+We are going to leverage [Quartzite](http://clojurequartz.info/), scheduling library for Clojure to create and run cron jobs in our project. Quartzite is a Clojure wrapper of Java's [Quartz Job Scheduler](http://www.quartz-scheduler.org/), one of the widely used and feature-rich open-source scheduling tools.
 
 ### Initializing the Scheduler
 
@@ -28,7 +28,7 @@ Let's get started by adding the dependency in the *project.clj*
   )
 ```
 
-Then create a new clojure file *infra/cron/core.clj* to define a Mount state for the Quartz scheduler.
+Then create a new Clojure file *infra/cron/core.clj* to define a Mount state for the Quartz scheduler.
 
 ```bash
 > mkdir src/wheel/infra/cron
@@ -50,7 +50,7 @@ This Mount state `scheduler` takes care of starting the Quartz scheduler during 
 
 ### Creating Job
 
-The next step is to implement an abstraction that creates different kids of Quartz [Jobs](https://www.quartz-scheduler.org/api/2.1.7/org/quartz/Job.html) required for our application.
+The next step is to implement an abstraction that creates different kinds of Quartz [Jobs](https://www.quartz-scheduler.org/api/2.1.7/org/quartz/Job.html) required for our application.
 
 ```bash
 > mkdir src/wheel/infra/cron/job
@@ -70,17 +70,19 @@ The next step is to implement an abstraction that creates different kids of Quar
 
 (defn- create-job [channel-config cron-job-config] 
   (qj/build
-   (qj/of-type (job-type cron-job-config)) ; <1>
+   (qj/of-type (job-type cron-job-config))
    (qj/using-job-data {:channel-config  channel-config
-                       :cron-job-config cron-job-config}) ; <2>
-   (qj/with-identity (qj/key (identifier cron-job-config))))) ; <3>
+                       :cron-job-config cron-job-config})
+   (qj/with-identity (qj/key (identifier cron-job-config)))))
 ```
 
-The `create-job` is a generic function that takes configuration of a cron job and the configuration of the channel that the job is going to interact to. It builds the <span class="callout">1</span> Quartz's `Job` instance by getting the `JobType` using the multi-method `job-type`. While building it passes the configuration parameters to the Job using the [JobDataMap](https://www.quartz-scheduler.org/api/2.1.7/org/quartz/JobDataMap.html).
+The `create-job` function takes the configuration of a cron job and its associated channel's configuration as its parameters. 
 
-### Creating Trigger
+It builds the Quartz's `Job` instance by getting the `JobType` using the multi-method `job-type`. While creating it passes the configuration parameters to the Job using the [JobDataMap](https://www.quartz-scheduler.org/api/2.1.7/org/quartz/JobDataMap.html).
 
-The next functionality that we need is to have a function that creates a Quartz [Trigger](https://www.quartz-scheduler.org/api/2.1.7/org/quartz/Trigger.html). Trigger are the 'mechanism' by which Jobs are scheduled.
+### Creating A Trigger
+
+The next functionality that we need is to have a function that produces a Quartz [Trigger](https://www.quartz-scheduler.org/api/2.1.7/org/quartz/Trigger.html). Triggers are the 'mechanism' by which Jobs are scheduled.
 
 ```clojure
 ; src/wheel/infra/cron/job/core.clj
@@ -174,9 +176,9 @@ The `config/get-all-cron-jobs` function in the above section is not a part of ou
 
 ## Defining Allocate Order Job
 
-One of the key cron job of the middleware is allocating an order. It periodically polls for new orders on a marketplace channel and allocate them in the OMS if any. In this blog post, we are going to look at how we processed the new orders from Tata-CliQ. As we did it in the last blog post, we are going to use a fake implemention of their new orders API.
+One of the vital cron jobs of the middleware is allocating an order. It periodically polls for new orders on a marketplace channel and allocates them in the OMS if any. In this blog post, we are going to look at how we processed the new orders from Tata-CliQ. As we did it in the last blog post, we are going to use a fake implementation of their new orders API.
 
-As all the cron jobs are going to pull the channel and cron configuration information for the job context that we set during during the job creation in the `create-job` function and invoke a function in the channel, let's create a common handle function.
+As all the cron jobs are going to pull the channel and cron configuration information from the job context, which we set during during the job creation in the `create-job` function, and invoke a function in the channel, let's create a standard handle function.
 
 ```clojure
 ; src/wheel/infra/cron/job/core.clj
@@ -212,7 +214,7 @@ Then use this `handle` function to define the `AllocateOrder` job.
   AllocateOrderJob)
 ```
 
-The higher-order function `channel/allocate-order` that we pass here to the `handle` function is a multi-method that takes care of the allocating order from different marketplace channels. This is also not defined yet. So, let's add them as well. 
+The higher-order function `channel/allocate-order` that we pass here to the `handle` function is a multi-method that takes care of the allocating order from different marketplace channels. It is also not defined yet. So, let's add it as well. 
 
 ```clojure
 ; src/wheel/marketplace/channel.clj
@@ -266,7 +268,7 @@ The fake implementation of the tata-cliq's new orders API returns an XML respons
 </Orders>
 ```
 
-Our objective is to convert this into an another XML format (like below) and send that to OMS via IBM-MQ. 
+Our objective is to convert this into another XML format (like below) and send it to OMS via IBM-MQ. 
 
 ```xml
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -289,27 +291,27 @@ Our objective is to convert this into an another XML format (like below) and sen
 </Order>
 ```
 
-To perform this, we are going to have unified data model for representing an OMS order and each marketplace has its logic to convert its data model into OMS's data model of an order.
+To perform this, we are going to have a unified data model for representing an OMS order, and each marketplace has its logic to convert its data model into OMS's data model of the order.
 
-The common data model would look like this for the above XML data. 
+The standard data model would look like this for the above XML data. 
 
 ```clojure
-{:order-no "181219-001-345786",
- :payments [{:amount 900, :reference-id "000000-1545216772601"}],
- :order-lines [{:id "200374", :sale-price 900}],
- :billing-address {:first-name "Tamizhvendan",
-                   :last-name "Sembiyan",
-                   :line1 "Plot No 222",
-                   :line2 "Ashok Nagar 42nd Street",
-                   :city "Chennai",
-                   :state "TamilNadu",
-                   :pincode 600001},
- :shipping-address {:first-name "Tamizhvendan",
-                    :last-name "Sembiyan",
-                    :line1 "Plot No 222",
-                    :line2 "Ashok Nagar 42nd Street",
-                    :city "Chennai",
-                    :state "TamilNadu",
+{:order-no "181219-001-345786"
+ :payments [{:amount 900 :reference-id "000000-1545216772601"}]
+ :order-lines [{:id "200374" :sale-price 900}]
+ :billing-address {:first-name "Tamizhvendan"
+                   :last-name "Sembiyan"
+                   :line1 "Plot No 222"
+                   :line2 "Ashok Nagar 42nd Street"
+                   :city "Chennai"
+                   :state "TamilNadu"
+                   :pincode 600001}
+ :shipping-address {:first-name "Tamizhvendan"
+                    :last-name "Sembiyan"
+                    :line1 "Plot No 222"
+                    :line2 "Ashok Nagar 42nd Street"
+                    :city "Chennai"
+                    :state "TamilNadu"
                     :pincode 600001}}
 ```
 
@@ -395,7 +397,7 @@ As a first step let's define a spec for this
                    ::order-lines]))
 ```
 
-The next step is have a function that takes an order that conform to the above spec and transform it to to its XML version.
+The next step is to add a function that takes an order that conforms to the above spec and transforms it into its XML version.
 
 We are going to make use of [data.xml](https://github.com/clojure/data.xml) library that allows the dynamic creation of XML content from Clojure data structures via [Hiccup-like](https://github.com/weavejester/hiccup) style.
 
@@ -451,7 +453,7 @@ We are going to make use of [data.xml](https://github.com/clojure/data.xml) libr
 
 ## Sending Message to OMS via IBM-MQ
 
-The next step is sending the tranformed order information to IBM-MQ. To enable it let's add a [JMS producer](https://docs.oracle.com/javaee/7/api/javax/jms/MessageProducer.html) for order allocation in *infra/oms.clj*.
+The next step is sending the transformed order information to IBM-MQ. To enable it, let's add a [JMS producer](https://docs.oracle.com/javaee/7/api/javax/jms/MessageProducer.html) for order allocation in *infra/oms.clj*.
 
 ```clojure
 ; src/wheel/infra/oms.clj
@@ -494,7 +496,7 @@ Then define an OMS client that abstracts the communication to OMS.
 
 ## Adding New Orders API
 
-Let's switch our attention to the Tata-CliQ API side that is going to fetch the new orders from their site for the given channel id. The [Mockon](https://mockoon.com) configuration for the fake server can be downloaded from [this gist](https://gist.github.com/tamizhvendan/4544f0123bd30681be1c5198ed87522c#file-mockon-json). 
+Let's switch our attention to the Tata-CliQ API side that is going to fetch the new orders from their site for the given channel id. The [Mockon](https://mockoon.com) configuration for the fake server is available in [this gist](https://gist.github.com/tamizhvendan/4544f0123bd30681be1c5198ed87522c#file-mockon-json). 
 
 ```clojure
 ; src/wheel/marketplace/tata_cliq/api.clj
@@ -511,9 +513,9 @@ Let's switch our attention to the Tata-CliQ API side that is going to fetch the 
         tata-cliq-order/parse-new-orders)))
 ```
 
-The `tata-cliq-order/parse-new-orders` function takes a XML response and transform it into a tata-cliq's order data model.
+The `tata-cliq-order/parse-new-orders` function takes an XML response and transforms it into a tata-cliq's order data model.
 
-> As it is so domain specific, I am not going to share it here and you can refer [this implemention](https://github.com/demystifyfp/BlogSamples/blob/0.20/clojure/wheel/src/wheel/marketplace/tata_cliq/order.clj). This implementation uses a custom [XML to Clojure map](https://github.com/demystifyfp/BlogSamples/blob/0.20/clojure/wheel/src/wheel/xml.clj) conversion implementation
+> As it is so domain-specific, I am not going to share it here and you can refer to [this implementation](https://github.com/demystifyfp/BlogSamples/blob/0.20/clojure/wheel/src/wheel/marketplace/tata_cliq/order.clj). This implementation uses a custom [XML to Clojure map](https://github.com/demystifyfp/BlogSamples/blob/0.20/clojure/wheel/src/wheel/xml.clj) conversion implementation
 
 ```clojure
 ; src/wheel/marketplace/tata_cliq/order.clj
@@ -530,11 +532,11 @@ The `tata-cliq-order/parse-new-orders` function takes a XML response and transfo
   )
 ```
 
-As the name indicates the `to-oms-order` function takes an tata-cliq's order and transform it to OMS's order representation.
+As the name indicates the `to-oms-order` function takes a tata-cliq's order and transforms it to OMS's order representation.
 
 ## Wiring Up With The Cron Job
 
-The final piece is wiring up the allocate order cron job for the Tata-Cliq API. It fetches the new orders, tranform each order to its corresponding OMS representation and allocate each of them in the OMS.
+The final piece is wiring up the allocate order cron job for the Tata-Cliq API. It fetches the new orders, tranforms each order to its corresponding OMS representation and allocates them in the OMS.
 
 ```clojure
 (ns wheel.marketplace.tata-cliq.core
@@ -606,12 +608,12 @@ Thanks to our existing logging infrastructure, logging cron job started and fail
           :level :error)))
 ```
 
-If we stop the fake API server and start the application, we will get the cron-job notification in the slack.
+If we stop the fake API server for a moment, we will get the cron-job notification in the slack when the cron job got triggered.
 
 ![](/img/clojure/blog/ecom-middleware/cron-job-failed-notification.png)
 
 ## Summary
 
-In this blog post, we are learned how to implement cron jobs in Clojure. With this we are wrapping up the business requirement implementations of the sample app, Wheel. In the upcoming blog posts, I'll be touching up on how we went with the testing and also reflecting on the design of the overall design of the system. 
+In this blog post, we learnt how to implement cron jobs in Clojure. With this, we are wrapping up the business requirement implementations of the sample app, Wheel. In the upcoming blog posts, I'll be touching upon how we went with the testing and also reflecting on the design of the overall design of the system. 
 
 The source code associated with this part is available on [this GitHub](https://github.com/demystifyfp/BlogSamples/tree/0.20/clojure/wheel) repository. 
