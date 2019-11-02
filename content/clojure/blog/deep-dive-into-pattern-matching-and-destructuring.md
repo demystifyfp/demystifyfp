@@ -117,7 +117,7 @@ int minute = timestamp.getMinute();
 int second = timestamp.getSecond();
 ```
 
-## A different perspective 
+### A different perspective 
 
 In Object-Oriented programming, we use objects to hold the data. To get the data out of an object, we need to provide custom methods, like `getHour`, `getMinute` and `getSecond` here. 
 
@@ -175,8 +175,7 @@ class Point {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     Point point = (Point) o;
-    return x == point.x &&
-            y == point.y;
+    return x == point.x && y == point.y;
   }
 
   @Override
@@ -196,4 +195,41 @@ Can you see a pattern here?
 
 If the main purpose of the Class is to hold the data, then classes are nothing but a set of named placeholders of some arbitary values!
 
-Kotlin embraces this thought process and provides us [Data Class](https://kotlinlang.org/docs/reference/data-classes.html) to support these kind of scenarios. 
+Kotlin embraces this thought process and provides us [Data Class](https://kotlinlang.org/docs/reference/data-classes.html) to support these kind of scenarios. The Data Class for representing `Point` would look like this
+
+```kotlin
+data class Point(val x : Int, val y : Int)
+```
+
+This definition follows the data semantics and hence comparing two instances of this `Point` class which has same values will return `true`.
+
+```kotlin
+println(Point(0, 0) == Point(0,0))
+```
+
+Like data, it is immutable as well. 
+
+In Clojure, data is a first class citizen and representing an instance of `Point` in Clojure would look this
+
+```clojure
+{:x 0 :y 0}
+```
+It is a map data structure with the keys representing the attribute name.
+
+The keys `:x` and `:y` doesn't communicate much about what they mean. So, we can make use of Clojure's namespaced keyword to make it standalone. 
+
+```clojure
+{:point/x 0 :point/y 0}
+```
+
+It is immutable and comparing the two different points having same value will return `true` 
+
+```clojure
+(= {:point/x 0 :point/y 0} {:point/x 0 :point/y 0})
+```
+
+In this section, we saw how to represent a data in Java, Kotlin & Clojure and understood the semantics behind each of them. In OO, we mix data and behaviour inside objects. Whereas in FP, we view them separately and treat data as immutable. 
+
+So, what is the benefit?
+
+We already experienced one, the equality check without writing any special methods. 
