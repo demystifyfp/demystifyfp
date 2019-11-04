@@ -216,7 +216,7 @@ In Clojure, data is a first class citizen and representing an instance of `Point
 ```
 It is a map data structure with the keys representing the attribute name.
 
-The keys `:x` and `:y` doesn't communicate much about what they mean. So, we can make use of Clojure's namespaced keyword to make it standalone. 
+The keys `:x` and `:y` doesn't communicate much about what they mean. So, we can make use of Clojure's namespaced keyword to make it meaningful. 
 
 ```clojure
 {:point/x 0 :point/y 0}
@@ -230,6 +230,60 @@ It is immutable and comparing the two different points having same value will re
 
 In this section, we saw how to represent a data in Java, Kotlin & Clojure and understood the semantics behind each of them. In OO, we mix data and behaviour inside objects. Whereas in FP, we view them separately and treat data as immutable. 
 
-So, what is the benefit?
+## Extracting Data
 
-We already experienced one, the equality check without writing any special methods. 
+If we represent a value using objects, we need to provide the getter methods to get the values out of the object. 
+
+But if we treating data as a set of key value pairs, do we still need it? 
+
+Let me pull the regular expression that we saw earlier to extract the timestamp.
+
+```kotlin
+val pattern = "(\\d\\d):(\\d\\d):(\\d\\d)"
+// ...
+```
+
+What is the role of paranthesis here? They capture the text matched by the regex inside them into a numbered group that can be reused with a numbered backreference. 
+
+Now let's look at the data representation. 
+
+```clojure
+{:point/x 0 :point/y 0}
+```
+
+What is the role of keys here? They capture the value provided and associate them with a name. 
+
+Like how we extracted the `hour`, `minute` and `second` from the numbered group
+
+```kotlin
+val pattern = "(\\d\\d):(\\d\\d):(\\d\\d)"
+val regex = pattern.toRegex()
+val timestamp = regex.find(text)!!.groupValues
+val hour = timestamp[1] // <-
+val minute = timestamp[2] // <-
+val second = timestamp[3] // <-
+```
+
+We can extract the values from the new data reprentation using their names
+
+```clojure
+(defn print-point [p1]
+  (let [{:keys [x y]} p1]
+    (printf "P1: (%d, %d)" x y)))
+
+(print-point {:x 0 :y 0})
+```
+
+This is called associative destructuring. In other words, we matched the values of the map with their associated names and extracted them for further use.
+
+There is another destucturing technique called positional destructuring, extracting data using their position. In the regex example, the return value of `groupValues` is an array of four elements, with the first element containing the whole matched string and the rest contains the grouped value strings. 
+
+```kotlin
+// ...
+val timestamp = regex.find(text)!!.groupValues
+val hour = timestamp[1]
+val minute = timestamp[2]
+val second = timestamp[3]
+println("Hour: $hour, Minute: $minute, Second, $second")
+```
+
