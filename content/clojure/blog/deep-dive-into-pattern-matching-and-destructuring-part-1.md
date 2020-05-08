@@ -1,5 +1,5 @@
 ---
-title: "A Deep Dive Into Pattern Matching and Destructuring"
+title: "A Deep Dive Into Pattern Matching and Destructuring - Part 1"
 date: 2019-11-02T08:18:21+05:30
 draft: true
 tags: ['Clojure', 'Kotlin']
@@ -71,7 +71,7 @@ What made this difference?
 
 There is a pattern in the text we are operating. In the second version, we recognized it and used the regular expression's capability to achieve our objective. 
 
-This pattern recognisation and matching to extract values out of a string is not only limited to string. It can be applied at any data level. Before, we reach there let's spend some time on how we are reprsenting data in our systems.
+This pattern recognition and matching to extract values out of a string is not only limited to string. It can be applied at any data level. Before, we reach there let's spend some time on how we are representing data in our systems.
 
 ## Representing Data
 
@@ -248,7 +248,7 @@ What is the role of paranthesis here? They capture the text matched by the regex
 Now let's look at the data representation. 
 
 ```clojure
-{:point/x 0 :point/y 0}
+{:x 0 :y 0}
 ```
 
 What is the role of keys here? They capture the value provided and associate them with a name. 
@@ -274,9 +274,13 @@ We can extract the values from the new data reprentation using their names
 (print-point {:x 0 :y 0})
 ```
 
-This is called associative destructuring. In other words, we matched the values of the map with their associated names and extracted them for further use.
+This is called **associative destructuring**. In other words, we matched the values of the map with their associated names and extracted them for further use.
 
-There is another destucturing technique called positional destructuring, extracting data using their position. In the regex example, the return value of `groupValues` is an array of four elements, with the first element containing the whole matched string and the rest contains the grouped value strings. 
+> Note: At the time of this writing, Kotlin [doesn't support](https://discuss.kotlinlang.org/t/position-based-declaration-destructuring/3787) associative destructuring.
+
+There is another destucturing technique called **positional destructuring**, extracting data using their position. 
+
+In the regex example, the return value of `groupValues` is an array of four elements, with the first element containing the whole matched string and the rest contains the grouped value strings. 
 
 ```kotlin
 // ...
@@ -287,3 +291,27 @@ val second = timestamp[3]
 println("Hour: $hour, Minute: $minute, Second, $second")
 ```
 
+Using destructuring we can simplify the above code using positional destructuring like below.
+
+```kotlin
+fun printTimestampV3(text : String) {
+  val pattern = "(\\d\\d):(\\d\\d):(\\d\\d)"
+  val regex = pattern.toRegex()
+  val (_, hour, minute, second) = regex.find(text)!!.groupValues
+  println("Hour: $hour, Minute: $minute, Second: $second")
+}
+```
+
+The corresponding example in Clojure would like this.
+
+```clojure
+(defn print-timestamp [text]
+  (let [pattern                #"(\d\d):(\d\d):(\d\d)"
+        [_ hour minute second] (re-find pattern text)]
+    (printf "Hour: %s, Minute: %s, Second: %s"
+            hour minute second)))
+```
+
+## Summary
+
+In this blog post, we learnt how to represent data as values and extract them using destructuring. Just like how we extract values from string using regular expression, we are extracting the values from the data representation by recognizing the associative and the positional patterns. 
